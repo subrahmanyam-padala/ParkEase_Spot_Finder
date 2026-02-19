@@ -13,35 +13,39 @@ public class Users {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	int user_id;
+	@Column(name = "user_id")
+	private Integer userId;
 
-	@Column(nullable = false, unique = true)
-	String username;
+	@Column(name = "full_name", nullable = false)
+	private String fullName;
 
-	@Column(nullable = false)
-	String password;
+	@Column(name = "username", nullable = false, unique = true, length = 50)
+	private String username;
 
-	@Column(nullable = false, unique = true)
-	String email;
+	@Column(name = "password", nullable = false)
+	private String password;
+
+	@Column(name = "email", nullable = false, unique = true)
+	private String email;
 
 	public Users() {
 
 	}
 
-	public Users(int user_id, String username, String password, String email) {
+	public Users(String fullName, String username, String password, String email) {
 		super();
-		this.user_id = user_id;
+		this.fullName = fullName;
 		this.username = username;
 		this.password = password;
 		this.email = email;
 	}
 
-	public int getUser_id() {
-		return user_id;
+	public String getFullName() {
+		return fullName;
 	}
 
-	public void setUser_id(int user_id) {
-		this.user_id = user_id;
+	public void setFullName(String fullName) {
+		this.fullName = fullName;
 	}
 
 	public String getUsername() {

@@ -25,26 +25,26 @@ public class UsersController {
 		this.usersService = usersService;
 	}
 
-	// 1️⃣ Get All Users
+	// 1️ Get All Users
 	@GetMapping
 	public ResponseEntity<List<Users>> getAllUsers() {
 		return ResponseEntity.ok(usersService.getAllUsers());
 	}
 
-	// 2️⃣ Register User
-
+	// 2 Get user by User_id
 	@GetMapping("/{user_id}")
 	public ResponseEntity<Optional<Users>> getUserById(@PathVariable int user_id) {
 		Optional<Users> users = usersService.getAllUsers(user_id);
 		return ResponseEntity.ok(users);
 	}
 
+	// 3 Register User
 	@PostMapping
 	public ResponseEntity<Users> createUser(@RequestBody UsersRequestDTO usersRequestDTO) {
 		return ResponseEntity.ok(usersService.createUsers(usersRequestDTO));
 	}
 
-	// 3️⃣ Login (Structure Ready – Service will implement)
+	// 4 Login (Structure Ready – Service will implement)
 	@PostMapping("/login")
 	public ResponseEntity<String> login(@RequestBody UsersRequestDTO loginDTO) {
 		return ResponseEntity.ok("Login API Ready");
