@@ -7,6 +7,9 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
+/**
+ * @author Atharv Ital
+ */
 @Entity
 @Table(name = "users")
 public class Users {

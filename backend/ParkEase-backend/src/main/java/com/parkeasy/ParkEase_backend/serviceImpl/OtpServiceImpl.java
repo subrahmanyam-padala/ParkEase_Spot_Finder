@@ -12,13 +12,14 @@ import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
+/**
+ * @author Atharv Ital
+ */
 @Service
 public class OtpServiceImpl implements OtpService {
 
 	private final EmailService emailService;
 	private final OtpRepository otpRepository;
-
-	// OTP validity duration in minutes
 	private static final int OTP_VALIDITY_MINUTES = 10;
 
 	public OtpServiceImpl(EmailService emailService, OtpRepository otpRepository) {
@@ -75,7 +76,7 @@ public class OtpServiceImpl implements OtpService {
 
 		OtpVerification otpVerification = otpRecord.get();
 
-		// Check if OTP is expired
+		// Check if OTP is expired (>)
 		if (LocalDateTime.now().isAfter(otpVerification.getExpiryTime())) {
 			otpRepository.deleteByEmail(normalizedEmail);
 			return false;
@@ -93,7 +94,7 @@ public class OtpServiceImpl implements OtpService {
 
 	private String generateOtp() {
 		SecureRandom random = new SecureRandom();
-		int otp = 100000 + random.nextInt(900000); // 6-digit OTP
+		int otp = 100000 + random.nextInt(900000);
 		return String.valueOf(otp);
 	}
 }
