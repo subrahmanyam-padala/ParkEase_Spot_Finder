@@ -11,6 +11,9 @@ import com.parkeasy.ParkEase_backend.entity.Users;
 import com.parkeasy.ParkEase_backend.repository.UsersRepository;
 import com.parkeasy.ParkEase_backend.service.UsersService;
 
+/**
+ * @author Atharv Ital
+ */
 @Service
 public class UsersServiceImpl implements UsersService {
 
@@ -28,7 +31,7 @@ public class UsersServiceImpl implements UsersService {
 	}
 
 	@Override
-	public Optional<Users> getAllUsers(int user_id) {
+	public Optional<Users> getUserById(int user_id) {
 		return usersRepository.findById(user_id);
 	}
 

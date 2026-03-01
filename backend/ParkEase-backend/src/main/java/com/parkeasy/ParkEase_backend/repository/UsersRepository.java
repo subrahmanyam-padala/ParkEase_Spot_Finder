@@ -6,6 +6,9 @@ import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
 
+/**
+ * @author Atharv Ital
+ */
 @Repository
 public interface UsersRepository extends JpaRepository<Users, Integer> {
 

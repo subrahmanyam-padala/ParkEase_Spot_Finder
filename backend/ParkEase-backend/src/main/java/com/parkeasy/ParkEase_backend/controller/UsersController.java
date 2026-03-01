@@ -31,7 +31,7 @@ public class UsersController {
 	// 2 Get user by User_id
 	@GetMapping("/{user_id}")
 	public ResponseEntity<Optional<Users>> getUserById(@PathVariable int user_id) {
-		Optional<Users> users = usersService.getAllUsers(user_id);
+		Optional<Users> users = usersService.getUserById(user_id);
 		return ResponseEntity.ok(users);
 	}
 }

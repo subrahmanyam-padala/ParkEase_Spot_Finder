@@ -3,7 +3,6 @@ package com.parkeasy.ParkEase_backend.serviceImpl;
 import java.io.File;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.FileSystemResource;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
@@ -13,6 +12,9 @@ import com.parkeasy.ParkEase_backend.service.EmailService;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 
+/**
+ * @author Atharv Ital
+ */
 @Service
 public class EmailServiceImpl implements EmailService {
 
@@ -33,28 +35,95 @@ public class EmailServiceImpl implements EmailService {
 		String htmlBody = """
 				<!DOCTYPE html>
 				<html>
-				<body style="font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #f4f7f6; padding: 20px; margin: 0;">
-				    <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 40px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); text-align: center;">
-				        <h2 style="color: #333333; margin-top: 0;">Login Verification</h2>
-				        <p style="color: #555555; font-size: 16px; line-height: 1.5;">
-				            Hello,<br>Please use the following One-Time Password (OTP) to complete your login.
-				            This code is valid for the next <strong>10 minutes</strong>.
-				        </p>
+				<head>
+				<meta charset="UTF-8">
+				<meta name="viewport" content="width=device-width, initial-scale=1.0">
+				<title>City Mall - Login Verification</title>
+				</head>
 
-				        <div style="margin: 35px 0;">
-				            <span style="font-size: 36px; font-weight: bold; color: #4CAF50; letter-spacing: 8px; padding: 15px 30px; background-color: #e8f5e9; border-radius: 6px; border: 1px dashed #4CAF50;">
-				                %s
-				            </span>
-				        </div>
+				<body style="margin:0; padding:0; background-color:#eef2f5; font-family: Arial, Helvetica, sans-serif;">
 
-				        <p style="color: #999999; font-size: 14px; margin-bottom: 0;">
-				            If you did not request this code, please ignore this email or contact support.
-				        </p>
+				<table width="100%" cellpadding="0" cellspacing="0" border="0" style="padding:20px 0;">
+				<tr>
+				<td align="center">
+
+				<table width="600" cellpadding="0" cellspacing="0" border="0" style="background:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 10px 25px rgba(0,0,0,0.08);">
+
+				<tr>
+				<td style="background: linear-gradient(135deg, #1e3c72, #2a5298); padding:35px 30px; text-align:center; color:#ffffff;">
+
+				    <div style="width:60px; height:60px; margin:0 auto 15px auto; background:rgba(255,255,255,0.2); border-radius:50%; line-height:60px;">
+				        🏬
 				    </div>
+
+				    <h1 style="margin:0; font-size:24px; font-weight:bold; letter-spacing:1px;">
+				        City Mall
+				    </h1>
+
+				    <p style="margin:8px 0 0 0; font-size:14px; opacity:0.9;">
+				        Secure Account Access
+				    </p>
+				</td>
+				</tr>
+
+				<tr>
+				<td style="padding:40px 35px; text-align:center;">
+
+				<h2 style="margin-top:0; color:#333;">Login Verification</h2>
+
+				<p style="color:#555; font-size:16px; line-height:1.6;">
+				Hello,<br>
+				Use the One-Time Password (OTP) below to securely access your City Mall account.<br>
+				This code is valid for the next <strong>10 minutes</strong>.
+				</p>
+
+				<div style="height:3px; width:60px; background:#2a5298; margin:25px auto; border-radius:3px;"></div>
+
+				<div style="margin:30px 0;">
+				<span style="
+				    display:inline-block;
+				    font-size:40px;
+				    font-weight:bold;
+				    color:#1e3c72;
+				    letter-spacing:12px;
+				    padding:20px 40px;
+				    background:#f0f4ff;
+				    border-radius:10px;
+				    border:2px dashed #2a5298;
+				    box-shadow:0 6px 15px rgba(42,82,152,0.15);
+				">
+				{{otp}}
+				</span>
+				</div>
+
+				<div style="margin-top:25px; font-size:14px; color:#666;">
+				    🔒 Encrypted &nbsp;&nbsp; | &nbsp;&nbsp; 🛡 Protected &nbsp;&nbsp; | &nbsp;&nbsp; ⚡ Instant Access
+				</div>
+
+				<p style="color:#999; font-size:14px; margin-top:30px;">
+				If you did not request this code, please ignore this email or contact City Mall support immediately.
+				</p>
+
+				</td>
+				</tr>
+
+				<tr>
+				<td style="background:#f7f9fc; padding:20px; text-align:center; font-size:12px; color:#888;">
+				© 2026 City Mall. All rights reserved.<br>
+				This is an automated security message — please do not reply.
+				</td>
+				</tr>
+
+				</table>
+
+				</td>
+				</tr>
+				</table>
+
 				</body>
 				</html>
 				"""
-				.formatted(otp);
+				.replace("{{otp}}", otp);
 
 		helper.setText(htmlBody, true);
 		mailSender.send(message);
@@ -63,68 +132,6 @@ public class EmailServiceImpl implements EmailService {
 
 	@Override
 	public void sendTicketWithQrCode(String toEmail, String ticketDetails, File qrCodeFile) throws MessagingException {
-		MimeMessage message = mailSender.createMimeMessage();
-		MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
-		helper.setFrom(SENDER_EMAIL);
-		helper.setTo(toEmail);
-		helper.setSubject("🎟️ Your Parking Ticket & QR Code - ParkEase");
-
-		String htmlBody = """
-				<!DOCTYPE html>
-				<html>
-				<body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #eaeff3; padding: 40px 20px; margin: 0;">
-
-				    <table width="100%%" cellspacing="0" cellpadding="0" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 8px 20px rgba(0,0,0,0.08);">
-
-				        <tr>
-				            <td style="background-color: #2c3e50; color: #ffffff; padding: 30px; text-align: center;">
-				                <h1 style="margin: 0; font-size: 26px; letter-spacing: 2px; text-transform: uppercase;">Parking Ticket</h1>
-				                <p style="margin: 8px 0 0 0; font-size: 15px; color: #bdc3c7;">ParkEase</p>
-				            </td>
-				        </tr>
-
-				        <tr>
-				            <td style="padding: 40px 30px; background-color: #ffffff;">
-				                <h3 style="margin-top: 0; color: #2c3e50; font-size: 18px; border-bottom: 2px solid #f0f3f4; padding-bottom: 10px;">Ticket Information</h3>
-
-				                <div style="color: #555555; font-size: 16px; line-height: 1.8;">
-				                    %s
-				                </div>
-				            </td>
-				        </tr>
-
-				        <tr>
-				            <td style="background-color: #ffffff;">
-				                <div style="border-top: 3px dashed #eaeff3; margin: 0 15px;"></div>
-				            </td>
-				        </tr>
-
-				        <tr>
-				            <td style="padding: 30px; text-align: center; background-color: #fbfcfc;">
-				                <p style="margin: 0 0 20px 0; color: #7f8c8d; font-weight: 600; font-size: 14px; letter-spacing: 1px;">READY TO SCAN</p>
-
-				                <img src="cid:qrCodeImage" alt="Ticket QR Code" style="width: 220px; height: 220px; display: inline-block; border: 8px solid #ffffff; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);" />
-
-				                <p style="color: #95a5a6; font-size: 13px; margin-top: 25px; margin-bottom: 0;">
-				                    Please turn up your screen brightness when presenting this code at the gate.
-				                </p>
-				            </td>
-				        </tr>
-
-				    </table>
-
-				</body>
-				</html>
-				"""
-				.formatted(ticketDetails);
-
-		helper.setText(htmlBody, true);
-
-		FileSystemResource res = new FileSystemResource(qrCodeFile);
-		helper.addInline("qrCodeImage", res);
-
-		mailSender.send(message);
-		System.out.println("Premium ticket email sent successfully to " + toEmail);
 	}
 }

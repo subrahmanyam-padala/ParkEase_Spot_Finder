@@ -9,6 +9,9 @@ import jakarta.persistence.Table;
 
 import java.time.LocalDateTime;
 
+/**
+ * @author Atharv Ital
+ */
 @Entity
 @Table(name = "otp_verification")
 public class OtpVerification {

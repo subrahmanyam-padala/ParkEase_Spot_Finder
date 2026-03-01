@@ -4,6 +4,9 @@ import java.io.File;
 
 import jakarta.mail.MessagingException;
 
+/**
+ * @author Atharv Ital
+ */
 public interface EmailService {
 
 	/**

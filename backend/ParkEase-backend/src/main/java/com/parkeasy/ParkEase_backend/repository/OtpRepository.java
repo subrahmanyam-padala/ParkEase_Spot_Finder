@@ -11,6 +11,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
+/**
+ * @author Atharv Ital
+ */
 @Repository
 public interface OtpRepository extends JpaRepository<OtpVerification, Long> {
 
@@ -34,7 +37,7 @@ public interface OtpRepository extends JpaRepository<OtpVerification, Long> {
 	void deleteExpiredOtps(@Param("now") LocalDateTime now);
 
 	/**
-	 * Check if a valid (non-expired) OTP exists for email
+	 * Check if a valid (non expired) OTP exists for email
 	 */
 	@Query("SELECT COUNT(o) > 0 FROM OtpVerification o WHERE o.email = :email AND o.expiryTime > :now AND o.isVerified = false")
 	boolean existsValidOtpByEmail(@Param("email") String email, @Param("now") LocalDateTime now);

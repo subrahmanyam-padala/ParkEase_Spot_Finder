@@ -6,6 +6,9 @@ import java.util.Optional;
 import com.parkeasy.ParkEase_backend.dto.UsersRequestDTO;
 import com.parkeasy.ParkEase_backend.entity.Users;
 
+/**
+ * @author Atharv Ital
+ */
 public interface UsersService {
 	/**
 	 * It will return all the users in the database
@@ -22,7 +25,7 @@ public interface UsersService {
 	 *                It will return specific user
 	 * @return
 	 */
-	Optional<Users> getAllUsers(int user_id);
+	Optional<Users> getUserById(int user_id);
 
 	/**
 	 * Creating the user in the database
