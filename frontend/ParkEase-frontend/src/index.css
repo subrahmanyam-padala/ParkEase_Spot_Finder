@@ -719,6 +719,40 @@ body {
   color: var(--success-green);
 }
 
+/* --------------------------------------------------
+   Split page layout used by login/register/forgot
+   -------------------------------------------------- */
+.auth-page {
+  display: flex;
+  min-height: 100vh;
+}
+.auth-page .form-section {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  background-color: var(--light-white);
+}
+.auth-page .form-section .auth-card {
+  max-width: 420px;
+  width: 100%;
+}
+.auth-page .image-section {
+  flex: 1;
+  background: url('https://source.unsplash.com/collection/190727/800x600') center/cover no-repeat;
+}
+
+@media (max-width: 768px) {
+  .auth-page {
+    flex-direction: column;
+  }
+  .auth-page .image-section {
+    height: 200px;
+  }
+}
+
+
 .auth-message.error {
   color: var(--danger-red);
 }

@@ -1,6 +1,8 @@
  import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import carImage from "../images/image2.avif";
+import "./LoginPage.css"; // reuse same CSS
 
 function RegistrationPage() {
   const navigate = useNavigate();
@@ -13,7 +15,7 @@ function RegistrationPage() {
     confirmPassword: "",
     otp: ""
   });
-  
+
   const [otpSent, setOtpSent] = useState(false);
   const [message, setMessage] = useState("");
   const [isSuccess, setIsSuccess] = useState(false);
@@ -26,7 +28,6 @@ function RegistrationPage() {
     });
   };
 
-  // 🔹 Send OTP
   const handleSendOtp = async () => {
     if (!formData.email) {
       setIsSuccess(false);
@@ -53,19 +54,12 @@ function RegistrationPage() {
     }
   };
 
-  // 🔹 Register User
   const handleRegister = async (e) => {
     e.preventDefault();
 
     if (!otpSent) {
       setIsSuccess(false);
       setMessage("Please verify your email with OTP first");
-      return;
-    }
-
-    if (!formData.username) {
-      setIsSuccess(false);
-      setMessage("Username is required");
       return;
     }
 
@@ -80,19 +74,12 @@ function RegistrationPage() {
 
       const response = await axios.post(
         "http://localhost:8080/api/auth/register",
-        {
-          fullName: formData.fullName,
-          username: formData.username,
-          password: formData.password,
-          email: formData.email,
-          otp: formData.otp
-        }
+        formData
       );
 
       setIsSuccess(true);
       setMessage(response.data.message);
 
-      // Save JWT Token
       localStorage.setItem("token", response.data.token);
 
       setTimeout(() => {
@@ -101,118 +88,165 @@ function RegistrationPage() {
 
     } catch (error) {
       setIsSuccess(false);
-
-      if (error.response && error.response.data.message) {
-        setMessage(error.response.data.message);
-      } else {
-        setMessage("Registration failed. Please try again.");
-      }
+      setMessage(
+        error.response?.data?.message ||
+        "Registration failed. Please try again."
+      );
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="auth-wrapper">
-      <div className="auth-card">
-        <h2>Create Account</h2>
+    <div className="login-wrapper d-flex align-items-center justify-content-center">
+      
+      {/* MAIN CONTAINER WITH INCREASED HEIGHT */}
+      <div
+        className="login-container shadow-lg"
+        style={{ minHeight: "750px" }}
+      >
+        <div className="row g-0 h-100">
 
-        {message && (
-          <p className={`auth-message ${isSuccess ? "success" : "error"}`}>
-            {message}
-          </p>
-        )}
-
-        <form onSubmit={handleRegister}>
-          <input
-            type="text"
-            name="fullName"
-            className="form-control"
-            placeholder="Full Name"
-            value={formData.fullName}
-            onChange={handleChange}
-            required
-          />
-
-          {/* ✅ NEW USERNAME FIELD */}
-          <input
-            type="text"
-            name="username"
-            className="form-control"
-            placeholder="Username"
-            value={formData.username}
-            onChange={handleChange}
-            required
-          />
-
-          <div className="otp-row">
-            <input
-              type="email"
-              name="email"
-              className="form-control"
-              placeholder="Email"
-              value={formData.email}
-              onChange={handleChange}
-              required
+          {/* LEFT IMAGE SECTION */}
+          <div
+            className="col-md-6 d-none d-md-block"
+            style={{
+              minHeight: "750px",
+              overflow: "hidden",
+              borderTopLeftRadius: "20px",
+              borderBottomLeftRadius: "20px"
+            }}
+          >
+            <img
+              src={carImage}
+              alt="Car"
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                display: "block"
+              }}
             />
-
-            <button
-              type="button"
-              onClick={handleSendOtp}
-              disabled={loading}
-              className="otp-btn"
-            >
-              {loading ? "Sending..." : "Send OTP"}
-            </button>
           </div>
 
-          {otpSent && (
-            <input
-              type="text"
-              name="otp"
-              className="form-control"
-              placeholder="Enter OTP"
-              value={formData.otp}
-              onChange={handleChange}
-              required
-            />
-          )}
+          {/* RIGHT FORM SECTION */}
+          <div className="col-md-6 form-section d-flex align-items-center">
+            <div className="w-100 px-5">
 
-          <input
-            type="password"
-            name="password"
-            className="form-control"
-            placeholder="Password"
-            value={formData.password}
-            onChange={handleChange}
-            required
-          />
+              <h2 className="fw-bold mb-2">Create Account</h2>
+              <p className="text-muted mb-4">
+                Register to get started
+              </p>
 
-          <input
-            type="password"
-            name="confirmPassword"
-            className="form-control"
-            placeholder="Confirm Password"
-            value={formData.confirmPassword}
-            onChange={handleChange}
-            required
-          />
+              {message && (
+                <div className={`alert ${isSuccess ? "alert-success" : "alert-danger"}`}>
+                  {message}
+                </div>
+              )}
 
-          <button
-            type="submit"
-            className="register-btn"
-            disabled={loading}
-          >
-            {loading ? "Registering..." : "Register"}
-          </button>
-        </form>
+              <form onSubmit={handleRegister}>
 
-        <p className="login-link">
-          Already have an account?{" "}
-          <span onClick={() => navigate("/login")}>
-            Login
-          </span>
-        </p>
+                <input
+                  type="text"
+                  name="fullName"
+                  className="form-control custom-input mb-3"
+                  placeholder="Full Name"
+                  value={formData.fullName}
+                  onChange={handleChange}
+                  required
+                />
+
+                <input
+                  type="text"
+                  name="username"
+                  className="form-control custom-input mb-3"
+                  placeholder="Username"
+                  value={formData.username}
+                  onChange={handleChange}
+                  required
+                />
+
+                {/* Email + OTP Button */}
+                <div className="d-flex mb-3">
+                  <input
+                    type="email"
+                    name="email"
+                    className="form-control custom-input me-2"
+                    placeholder="Email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    required
+                  />
+
+                  <button
+                    type="button"
+                    onClick={handleSendOtp}
+                    disabled={loading}
+                    className="btn btn-outline-primary"
+                    style={{ minWidth: "120px" }}
+                  >
+                    {loading ? "Sending..." : "Send OTP"}
+                  </button>
+                </div>
+
+                {otpSent && (
+                  <input
+                    type="text"
+                    name="otp"
+                    className="form-control custom-input mb-3"
+                    placeholder="Enter OTP"
+                    value={formData.otp}
+                    onChange={handleChange}
+                    required
+                  />
+                )}
+
+                <input
+                  type="password"
+                  name="password"
+                  className="form-control custom-input mb-3"
+                  placeholder="Password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  required
+                />
+
+                <input
+                  type="password"
+                  name="confirmPassword"
+                  className="form-control custom-input mb-4"
+                  placeholder="Confirm Password"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  required
+                />
+
+                <button
+                  type="submit"
+                  className="btn login-btn w-100"
+                  disabled={loading}
+                >
+                  {loading ? "Registering..." : "Register"}
+                </button>
+
+              </form>
+
+              <div className="text-center mt-4">
+                <p className="mb-2 text-muted">
+                  Already have an account?
+                </p>
+                <button
+                  className="btn btn-outline-primary w-100 signup-btn"
+                  onClick={() => navigate("/login")}
+                >
+                  Login
+                </button>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
       </div>
     </div>
   );
