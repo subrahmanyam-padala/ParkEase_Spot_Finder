@@ -1,4 +1,4 @@
-import React from 'react';
+ import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { AppProvider } from './context/AppContext';
 import { ProtectedRoute } from './components';
@@ -12,6 +12,9 @@ import {
   NotFoundPage,
 } from './pages';
 
+import RegistrationPage from "./pages/RegistrationPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+
 function App() {
   return (
     <AppProvider>
@@ -19,6 +22,8 @@ function App() {
         {/* Public Routes */}
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegistrationPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
         {/* Protected Routes */}
         <Route
@@ -54,7 +59,7 @@ function App() {
           }
         />
 
-        {/* 404 Not Found */}
+        {/* 404 Not Found - ALWAYS KEEP LAST */}
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </AppProvider>
