@@ -7,6 +7,7 @@ import {
   LoginPage,
   DashboardPage,
   BookingPage,
+  CheckoutPage,
   PaymentPage,
   TicketPage,
   NotFoundPage,
@@ -42,8 +43,17 @@ function App() {
             </ProtectedRoute>
           }
         />
+
         <Route
-          path="/pay/:bookingId"
+          path="/checkout"
+          element={
+            <ProtectedRoute>
+              <CheckoutPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/payment"
           element={
             <ProtectedRoute>
               <PaymentPage />

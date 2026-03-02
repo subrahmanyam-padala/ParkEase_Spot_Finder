@@ -29,7 +29,7 @@ const DashboardPage = () => {
             <h2 className="fw-bold" style={{ color: '#2C3E50' }}>
               Welcome, {user?.name?.split(' ')[0]} 👋
             </h2>
-            <p className="text-muted">ABC City Mall Parking Dashboard</p>
+            <p className="text-muted"> City Mall Parking Dashboard</p>
           </div>
 
           {/* Live Counter Card */}
