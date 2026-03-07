@@ -56,4 +56,9 @@ public class UsersServiceImpl implements UsersService {
 		return usersRepository.save(users);
 	}
 
+	@Override
+	public Users findByUsername(String username) {
+		return usersRepository.findByUsername(username).orElse(null);
+	}
+
 }

@@ -3,6 +3,7 @@ package com.parkeasy.ParkEase_backend.serviceImpl;
 import java.io.File;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.FileSystemResource;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
@@ -132,6 +133,21 @@ public class EmailServiceImpl implements EmailService {
 
 	@Override
 	public void sendTicketWithQrCode(String toEmail, String ticketDetails, File qrCodeFile) throws MessagingException {
+		MimeMessage message = mailSender.createMimeMessage();
+		MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
+		helper.setFrom(SENDER_EMAIL);
+		helper.setTo(toEmail);
+		helper.setSubject("🅿️ Your ParkEase Booking Confirmation");
+		helper.setText(ticketDetails, true);
+
+		// Embed QR code as inline image (referenced via cid:qrcode_image in the HTML)
+		if (qrCodeFile != null && qrCodeFile.exists()) {
+			FileSystemResource qrResource = new FileSystemResource(qrCodeFile);
+			helper.addInline("qrcode_image", qrResource, "image/png");
+		}
+
+		mailSender.send(message);
+		System.out.println("Booking confirmation email sent to " + toEmail);
 	}
 }

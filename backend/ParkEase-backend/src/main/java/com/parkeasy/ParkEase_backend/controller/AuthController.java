@@ -32,7 +32,7 @@ public class AuthController {
     private final OtpService otpService;
 
     public AuthController(AuthenticationManager authenticationManager, JwtUtil jwtUtil, UsersService usersService,
-                          OtpService otpService) {
+            OtpService otpService) {
         this.authenticationManager = authenticationManager;
         this.jwtUtil = jwtUtil;
         this.usersService = usersService;
@@ -45,9 +45,11 @@ public class AuthController {
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(authRequest.getUsername(), authRequest.getPassword()));
 
+            Users user = usersService.findByUsername(authRequest.getUsername());
             String token = jwtUtil.generateToken(authRequest.getUsername());
+            String role = user != null && user.getRole() != null ? user.getRole() : "USER";
 
-            return ResponseEntity.ok(new AuthResponse(token, authRequest.getUsername(), "Login successful"));
+            return ResponseEntity.ok(new AuthResponse(token, authRequest.getUsername(), role, "Login successful"));
         } catch (BadCredentialsException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(new AuthResponse(null, null, "Invalid username or password"));
@@ -95,9 +97,11 @@ public class AuthController {
 
             // Generate JWT token
             String token = jwtUtil.generateToken(user.getUsername());
+            String role = user.getRole() != null ? user.getRole() : "USER";
 
             return ResponseEntity.status(HttpStatus.CREATED).body(
-                    new AuthResponse(token, user.getUsername(), "Email verified and user registered successfully"));
+                    new AuthResponse(token, user.getUsername(), role,
+                            "Email verified and user registered successfully"));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new AuthResponse(null, null, "Registration failed: " + e.getMessage()));

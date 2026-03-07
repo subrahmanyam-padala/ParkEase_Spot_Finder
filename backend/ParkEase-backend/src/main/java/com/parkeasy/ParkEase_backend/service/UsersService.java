@@ -36,4 +36,9 @@ public interface UsersService {
 	 * @return
 	 */
 	Users createUsers(UsersRequestDTO usersRequestDTO);
+
+	/**
+	 * Find user by username
+	 */
+	Users findByUsername(String username);
 }

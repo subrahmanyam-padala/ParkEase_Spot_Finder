@@ -31,8 +31,13 @@ public class Users {
 	@Column(name = "email", nullable = false, unique = true)
 	private String email;
 
-	public Users() {
+	@Column(name = "phone_number", length = 15)
+	private String phoneNumber;
 
+	@Column(name = "role", nullable = false, length = 20)
+	private String role = "USER";
+
+	public Users() {
 	}
 
 	public Users(String fullName, String username, String password, String email) {
@@ -41,6 +46,15 @@ public class Users {
 		this.username = username;
 		this.password = password;
 		this.email = email;
+		this.role = "USER";
+	}
+
+	public Integer getUserId() {
+		return userId;
+	}
+
+	public void setUserId(Integer userId) {
+		this.userId = userId;
 	}
 
 	public String getFullName() {
@@ -75,4 +89,19 @@ public class Users {
 		this.email = email;
 	}
 
+	public String getPhoneNumber() {
+		return phoneNumber;
+	}
+
+	public void setPhoneNumber(String phoneNumber) {
+		this.phoneNumber = phoneNumber;
+	}
+
+	public String getRole() {
+		return role;
+	}
+
+	public void setRole(String role) {
+		this.role = role;
+	}
 }
