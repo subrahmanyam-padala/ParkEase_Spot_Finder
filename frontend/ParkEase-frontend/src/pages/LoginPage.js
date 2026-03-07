@@ -1,140 +1,145 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useApp } from '../context/AppContext';
-import { Navbar, Footer, ErrorAlert } from '../components';
+ import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useApp } from "../context/AppContext";
+import carImage from "../images/image.png";   // ✅ Local image import
+import "./LoginPage.css";
 
 const LoginPage = () => {
   const navigate = useNavigate();
   const { login, user } = useApp();
-  const [formData, setFormData] = useState({ email: '', password: '' });
+
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+  });
 
   useEffect(() => {
-    if (user) {
-      navigate('/dashboard');
-    }
+    if (user) navigate("/dashboard");
   }, [user, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
     setLoading(true);
 
-    // Simulate API call
     setTimeout(() => {
-      if (formData.email && formData.password) {
-        login({
-          id: 1,
-          name: 'John Doe',
-          email: formData.email,
-          phone: '+91 98765 43210',
-        });
-        navigate('/dashboard');
-      } else {
-        setError('Please enter valid credentials');
-      }
+      login({
+        id: 1,
+        name: "John Doe",
+        email: formData.email,
+      });
+      navigate("/dashboard");
       setLoading(false);
     }, 1000);
   };
 
   return (
-    <div className="min-vh-100 d-flex flex-column" style={{ backgroundColor: '#ECF0F1' }}>
-      <Navbar />
+    <div className="login-wrapper d-flex align-items-center justify-content-center">
+      <div className="login-container shadow-lg">
+        <div className="row g-0 h-100">
 
-      <div className="flex-grow-1 d-flex align-items-center py-4">
-        <div className="container">
-          <div className="row justify-content-center">
-            <div className="col-12 col-sm-10 col-md-8 col-lg-5">
-              <div className="card fade-in">
-                <div className="card-header text-center">
-                  <h4 className="mb-0">
-                    <i className="bi bi-person-circle me-2"></i>
-                    Welcome Back
-                  </h4>
+          {/* LEFT IMAGE SECTION */}
+          <div
+            className="col-md-6 d-none d-md-block image-section"
+            style={{ backgroundImage: `url(${carImage})` }}
+          ></div>
+
+          {/* RIGHT FORM SECTION */}
+          <div className="col-md-6 form-section d-flex align-items-center">
+            <div className="w-100 px-5">
+
+              <h2 className="fw-bold mb-2">Sign In to your account</h2>
+
+              <form onSubmit={handleSubmit}>
+
+                {/* Email */}
+                 <div className="mb-3">
+                  <input
+                    type="email"
+                    className="form-control custom-input"
+                    placeholder="Enter your email"
+                    value={formData.email}
+                    onChange={(e) =>
+                      setFormData({ ...formData, email: e.target.value })
+                    }
+                    required
+                  />
                 </div>
-                <div className="card-body p-4">
-                  {error && <ErrorAlert message={error} onDismiss={() => setError('')} />}
 
-                  <form onSubmit={handleSubmit}>
-                    <div className="mb-3">
-                      <label className="form-label fw-semibold">
-                        <i className="bi bi-envelope me-1"></i> Email Address
-                      </label>
-                      <input
-                        type="email"
-                        className="form-control"
-                        placeholder="john@example.com"
-                        value={formData.email}
-                        onChange={(e) =>
-                          setFormData({ ...formData, email: e.target.value })
-                        }
-                        required
-                      />
-                    </div>
+                {/* Password */}
+                <div className="mb-3 position-relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    className="form-control custom-input"
+                    placeholder="Your password"
+                    value={formData.password}
+                    onChange={(e) =>
+                      setFormData({ ...formData, password: e.target.value })
+                    }
+                    required
+                  />
+                  <i
+                    className={`bi ${
+                      showPassword ? "bi-eye-slash" : "bi-eye"
+                    } input-icon-right`}
+                    onClick={() => setShowPassword(!showPassword)}
+                  ></i>
+                </div>
 
-                    <div className="mb-4">
-                      <label className="form-label fw-semibold">
-                        <i className="bi bi-lock me-1"></i> Password
-                      </label>
-                      <input
-                        type="password"
-                        className="form-control"
-                        placeholder="Enter your password"
-                        value={formData.password}
-                        onChange={(e) =>
-                          setFormData({ ...formData, password: e.target.value })
-                        }
-                        required
-                      />
-                    </div>
-
-                    <button
-                      type="submit"
-                      className="btn btn-primary w-100 mb-3"
-                      disabled={loading}
-                    >
-                      {loading ? (
-                        <>
-                          <span className="spinner-border spinner-border-sm me-2"></span>
-                          Logging in...
-                        </>
-                      ) : (
-                        <>
-                          <i className="bi bi-box-arrow-in-right me-2"></i>
-                          Login
-                        </>
-                      )}
-                    </button>
-                  </form>
-
-                  <div className="text-center">
-                    <p className="text-muted small mb-2">Don't have an account?</p>
-                    <button className="btn btn-outline-primary w-100">
-                      <i className="bi bi-person-plus me-2"></i>
-                      Create Account
-                    </button>
+                {/* Remember + Forgot */}
+                <div className="d-flex justify-content-between align-items-center mb-4">
+                  <div className="form-check">
+                    <input className="form-check-input" type="checkbox" />
+                    <label className="form-check-label">
+                      Remember me
+                    </label>
                   </div>
 
-                  {/* Demo Credentials */}
-                  <div className="mt-4 p-3 rounded" style={{ backgroundColor: '#ECF0F1' }}>
-                    <p className="small mb-2 fw-semibold text-center">
-                      <i className="bi bi-info-circle me-1"></i> Demo Credentials
-                    </p>
-                    <p className="small mb-0 text-center text-muted">
-                      Email: demo@parkease.com
-                      <br />
-                      Password: any password
-                    </p>
-                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-link p-0 forgot-link"
+                    onClick={() => navigate("/forgot-password")}
+                  >
+                    Forgot Password?
+                  </button>
                 </div>
-              </div>
+
+                {/* Login Button */}
+                <button
+                  type="submit"
+                  className="btn login-btn w-100"
+                  disabled={loading}
+                >
+                  {loading ? "Signing In..." : "Sign In"}
+                </button>
+
+                {/* Divider */}
+                <div className="divider my-4 text-center">
+                  <span>Or</span>
+                </div>
+
+                {/* Sign Up Section */}
+                <div className="text-center">
+                  <p className="mb-2 text-muted">
+                    Don’t have an account?
+                  </p>
+                  <button
+                    type="button"
+                    className="btn btn-outline-primary w-100 signup-btn"
+                    onClick={() => navigate("/register")}
+                  >
+                    Create Account
+                  </button>
+                </div>
+
+              </form>
             </div>
           </div>
+
         </div>
       </div>
-
-      <Footer />
     </div>
   );
 };

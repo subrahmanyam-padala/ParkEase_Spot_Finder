@@ -200,9 +200,9 @@ body {
    ============================================ */
 .slot-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-  padding: 16px 0;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 15px;
+  margin: 25px 0;
 }
 
 @media (min-width: 576px) {
@@ -267,6 +267,28 @@ body {
   font-size: 1.5rem;
 }
 
+.slot-card {
+  padding: 18px;
+  text-align: center;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 600;
+  background: linear-gradient(145deg, #ffffff, #e6e6e6);
+  box-shadow: 5px 5px 10px #cfcfcf, -5px -5px 10px #ffffff;
+  transition: 0.3s;
+}
+
+.slot-card:hover {
+  transform: translateY(-5px);
+  background: linear-gradient(135deg, #ff512f, #dd2476);
+  color: white;
+}
+
+.selected-slot {
+  background: linear-gradient(135deg, #141e30, #243b55) !important;
+  color: white;
+}
+
 /* ============================================
    Duration Selector
    ============================================ */
@@ -312,6 +334,15 @@ body {
 .payment-method i {
   font-size: 2rem;
   color: var(--secondary-gray);
+}
+.payment-bg {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-image: url("https://images.unsplash.com/photo-1518655048521-f130df041f66");
+  background-size: cover;
+  background-position: center;
 }
 
 /* ============================================
@@ -621,4 +652,321 @@ body {
 
 .booking-history-item:hover {
   background-color: #f8f9fa;
+}
+
+
+/* ============================================
+   Registration Page Styles
+   ============================================ */
+
+.auth-wrapper {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--secondary-gray) 0%, #1a252f 100%);
+  padding: 20px;
+}
+
+.auth-card {
+  background: white;
+  width: 100%;
+  max-width: 420px;
+  padding: 40px 30px;
+  border-radius: 20px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  animation: fadeIn 0.5s ease;
+}
+
+.auth-card h2 {
+  text-align: center;
+  margin-bottom: 25px;
+  font-weight: 700;
+  color: var(--secondary-gray);
+}
+
+.auth-card .form-control {
+  margin-bottom: 15px;
+}
+
+.auth-card .form-control:focus {
+  border-color: var(--primary-teal);
+  box-shadow: 0 0 0 3px rgba(0, 196, 180, 0.2);
+}
+
+.otp-row {
+  display: flex;
+  gap: 10px;
+}
+
+.otp-row .form-control {
+  flex: 1;
+}
+
+.otp-btn {
+  background-color: var(--primary-teal);
+  border: none;
+  color: white;
+  font-weight: 600;
+  border-radius: 12px;
+  padding: 10px 16px;
+  min-height: 48px;
+  transition: all 0.3s ease;
+}
+
+.otp-btn:hover {
+  background-color: var(--primary-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(0, 196, 180, 0.4);
+}
+
+.register-btn {
+  width: 100%;
+  margin-top: 10px;
+  background-color: var(--primary-teal);
+  border: none;
+  color: white;
+  font-weight: 600;
+  border-radius: 12px;
+  padding: 12px;
+  min-height: 50px;
+  transition: all 0.3s ease;
+}
+
+.register-btn:hover {
+  background-color: var(--primary-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(0, 196, 180, 0.4);
+}
+
+.auth-message {
+  text-align: center;
+  font-size: 0.9rem;
+  margin-bottom: 10px;
+  font-weight: 500;
+}
+
+.auth-message.success {
+  color: var(--success-green);
+}
+
+/* --------------------------------------------------
+   Split page layout used by login/register/forgot
+   -------------------------------------------------- */
+.auth-page {
+  display: flex;
+  min-height: 100vh;
+}
+.auth-page .form-section {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  background-color: var(--light-white);
+}
+.auth-page .form-section .auth-card {
+  max-width: 420px;
+  width: 100%;
+}
+.auth-page .image-section {
+  flex: 1;
+  background: url('https://source.unsplash.com/collection/190727/800x600') center/cover no-repeat;
+}
+
+@media (max-width: 768px) {
+  .auth-page {
+    flex-direction: column;
+  }
+  .auth-page .image-section {
+    height: 200px;
+  }
+}
+
+
+.auth-message.error {
+  color: var(--danger-red);
+}
+
+.login-link {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 0.9rem;
+}
+
+.login-link span {
+  color: var(--primary-teal);
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.3s ease;
+}
+
+.login-link span:hover {
+  color: var(--primary-hover);
+}
+/* ===== GLOBAL CENTER ===== */
+.page-center {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+
+  background-image: url("https://images.unsplash.com/photo-1506521781263-d8422e82f27a");
+  background-size: cover;
+  background-position: center;
+}
+h2 {
+  text-align: center;
+  font-size: 28px;
+  letter-spacing: 1px;
+}
+
+/* ===== GLASS CARD ===== */
+.glass-card {
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(12px);
+  padding: 40px;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 500px;
+  color: white;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5);
+}
+
+/* ===== SUMMARY CARD ===== */
+.summary-card {
+  background: white;
+  padding: 35px;
+  border-radius: 18px;
+  width: 100%;
+  max-width: 450px;
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+}
+
+/* ===== BUTTON ===== */
+.primary-btn {
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
+  border: none;
+  background: linear-gradient(135deg, #ff512f, #dd2476);
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.3s ease;
+}
+
+.primary-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+}
+
+/* ===== INPUTS ===== */
+input, select {
+  width: 100%;
+  padding: 10px;
+  margin-top: 12px;
+  border-radius: 8px;
+  border: none;
+}
+
+/* ===== SLOT GRID ===== */
+.slot-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin: 20px 0;
+}
+
+.slot-card {
+  padding: 15px;
+  text-align: center;
+  border-radius: 10px;
+  cursor: pointer;
+  background: white;
+  font-weight: 600;
+  transition: 0.3s;
+}
+
+.slot-card:hover {
+  background: #ff512f;
+  color: white;
+}
+
+.selected-slot {
+  background: #dd2476 !important;
+  color: white;
+}
+
+/* ===== PAYMENT CARD ===== */
+.card-visual {
+  background: linear-gradient(135deg, #141e30, #243b55);
+  padding: 20px;
+  border-radius: 14px;
+  margin: 20px 0;
+  color: white;
+}
+.payment-methods {
+  display: flex;
+  gap: 10px;
+  margin: 20px 0;
+}
+
+.payment-methods button {
+  flex: 1;
+  padding: 10px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.active-method {
+  background: #ff512f;
+  color: white;
+}
+.booking-bg {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-image: url("https://images.unsplash.com/photo-1503376780353-7e6692767b70");
+  background-size: cover;
+  background-position: center;
+}
+.checkout-bg {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-image: url("https://images.unsplash.com/photo-1506521781263-d8422e82f27a");
+  background-size: cover;
+  background-position: center;
+}
+.booked-slot {
+  background: #ff4d4d !important;
+  color: white;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.selected-slot {
+  background: #00ff88 !important;
+  color: black;
+  transform: scale(1.1);
+}
+
+.slot-card {
+  padding: 15px;
+  border-radius: 12px;
+  background: white;
+  text-align: center;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.slot-card:hover {
+  transform: scale(1.05);
 }

@@ -26,7 +26,7 @@ const LandingPage = () => {
             <i className="bi bi-building"></i>
           </div>
 
-          <h1 className="hero-title">ABC City Mall</h1>
+          <h1 className="hero-title">City Mall</h1>
           <p className="lead mb-4 opacity-75">Smart Parking System</p>
 
           {/* Live Counter */}
@@ -37,7 +37,7 @@ const LandingPage = () => {
           {/* Location */}
           <p className="mb-4">
             <i className="bi bi-geo-alt-fill me-2" style={{ color: '#00C4B4' }}></i>
-            Andheri East, Mumbai
+            Koramangala, Banglore
           </p>
 
           {/* CTA Button */}
