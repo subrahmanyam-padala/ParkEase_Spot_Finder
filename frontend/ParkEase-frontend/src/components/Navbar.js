@@ -51,6 +51,16 @@ const Navbar = () => {
                   </Link>
                 </li>
                 <li className="nav-item">
+                  <Link className="nav-link" to="/active-ticket">
+                    <i className="bi bi-geo-alt me-1"></i> Track
+                  </Link>
+                </li>
+                <li className="nav-item">
+                  <Link className="nav-link" to="/admin/analytics">
+                    <i className="bi bi-bar-chart-line me-1"></i> Admin
+                  </Link>
+                </li>
+                <li className="nav-item">
                   <button
                     className="nav-link btn text-start w-100"
                     onClick={handleLogout}

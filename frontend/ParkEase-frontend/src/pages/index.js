@@ -5,5 +5,7 @@ export { default as BookingPage } from './BookingPage';
 export { default as CheckoutPage } from './CheckoutPage';
 export { default as PaymentPage } from './PaymentPage';
 export { default as TicketPage } from './TicketPage';
+export { default as ActiveTicketTrackingPage } from './ActiveTicketTrackingPage';
+export { default as AdminAnalyticsPage } from './AdminAnalyticsPage';
 export { default as NotFoundPage } from './NotFoundPage';
 export { default as ForgotPasswordPage } from './ForgotPasswordPage';

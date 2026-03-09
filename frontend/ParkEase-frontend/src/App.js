@@ -10,6 +10,8 @@ import {
   CheckoutPage,
   PaymentPage,
   TicketPage,
+  ActiveTicketTrackingPage,
+  AdminAnalyticsPage,
   NotFoundPage,
 } from './pages';
 
@@ -65,6 +67,22 @@ function App() {
           element={
             <ProtectedRoute>
               <TicketPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/active-ticket"
+          element={
+            <ProtectedRoute>
+              <ActiveTicketTrackingPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/analytics"
+          element={
+            <ProtectedRoute>
+              <AdminAnalyticsPage />
             </ProtectedRoute>
           }
         />
