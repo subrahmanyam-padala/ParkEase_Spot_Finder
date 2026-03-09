@@ -622,3 +622,147 @@ body {
 .booking-history-item:hover {
   background-color: #f8f9fa;
 }
+
+/* ============================================
+   Active Ticket Tracking
+   ============================================ */
+.tracking-progress {
+  height: 12px;
+  border-radius: 999px;
+  background-color: #e8ecef;
+}
+
+.tracking-metric {
+  border: 1px solid #edf1f4;
+  border-radius: 12px;
+  padding: 12px;
+  background-color: #f9fbfc;
+}
+
+.tracking-timeline {
+  display: grid;
+  gap: 12px;
+}
+
+.timeline-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #edf1f4;
+  background: #ffffff;
+}
+
+.timeline-step i {
+  margin-top: 2px;
+  font-size: 1rem;
+}
+
+.timeline-step.done i {
+  color: var(--success-green);
+}
+
+.timeline-step.live {
+  border-color: rgba(0, 196, 180, 0.4);
+  background-color: rgba(0, 196, 180, 0.08);
+}
+
+.timeline-step.live i {
+  color: var(--primary-teal);
+}
+
+.tracking-map {
+  border: 1px dashed #d4dee5;
+  border-radius: 14px;
+  padding: 16px;
+  text-align: center;
+  background: linear-gradient(180deg, #f7fbfd 0%, #ffffff 100%);
+}
+
+.map-floor {
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.map-slot {
+  margin: 14px 0 12px;
+}
+
+.slot-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 72px;
+  min-height: 40px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background-color: rgba(0, 196, 180, 0.15);
+  color: var(--primary-teal);
+  font-weight: 700;
+}
+
+/* ============================================
+   Admin Analytics
+   ============================================ */
+.analytics-kpi {
+  background: #ffffff;
+  border-radius: 14px;
+  border: 1px solid #edf1f4;
+  padding: 16px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+}
+
+.occupancy-bars {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(38px, 1fr));
+  gap: 12px;
+  align-items: end;
+  min-height: 240px;
+}
+
+.bar-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.bar-track {
+  width: 100%;
+  max-width: 42px;
+  height: 170px;
+  border-radius: 10px;
+  background: #e9eff3;
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+}
+
+.bar-fill {
+  width: 100%;
+  background: linear-gradient(180deg, #00d3c2 0%, #00a89a 100%);
+  border-radius: 10px 10px 0 0;
+  transition: height 0.4s ease;
+}
+
+.bar-label {
+  color: #6c757d;
+}
+
+.bar-value {
+  font-weight: 700;
+  color: #2c3e50;
+}
+
+@media (max-width: 576px) {
+  .occupancy-bars {
+    gap: 8px;
+    grid-template-columns: repeat(7, minmax(28px, 1fr));
+  }
+
+  .bar-track {
+    max-width: 34px;
+    height: 140px;
+  }
+}

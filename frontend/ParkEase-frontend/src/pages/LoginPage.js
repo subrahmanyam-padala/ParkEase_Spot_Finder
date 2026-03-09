@@ -24,11 +24,13 @@ const LoginPage = () => {
     // Simulate API call
     setTimeout(() => {
       if (formData.email && formData.password) {
+        const isAdmin = formData.email.toLowerCase().includes('admin');
         login({
           id: 1,
-          name: 'John Doe',
+          name: isAdmin ? 'Admin User' : 'John Doe',
           email: formData.email,
           phone: '+91 98765 43210',
+          role: isAdmin ? 'admin' : 'user',
         });
         navigate('/dashboard');
       } else {
@@ -123,6 +125,8 @@ const LoginPage = () => {
                     </p>
                     <p className="small mb-0 text-center text-muted">
                       Email: demo@parkease.com
+                      <br />
+                      Admin Email: admin@parkease.com
                       <br />
                       Password: any password
                     </p>

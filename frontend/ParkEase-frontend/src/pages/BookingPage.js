@@ -66,15 +66,18 @@ const BookingPage = () => {
       return;
     }
 
+    const now = Date.now();
+    const expiresAt = new Date(now + selectedDuration.hours * 60 * 60 * 1000);
+
     const booking = {
-      id: Date.now(),
+      id: now,
       slot: selectedSlot.number,
       slotId: selectedSlot.id,
       duration: selectedDuration.hours,
       amount: selectedDuration.price,
-      validUntil: new Date(
-        Date.now() + selectedDuration.hours * 60 * 60 * 1000
-      ).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      validUntil: expiresAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      expiresAt: expiresAt.toISOString(),
+      paid: false,
       createdAt: new Date().toISOString(),
     };
 

@@ -4,4 +4,6 @@ export { default as DashboardPage } from './DashboardPage';
 export { default as BookingPage } from './BookingPage';
 export { default as PaymentPage } from './PaymentPage';
 export { default as TicketPage } from './TicketPage';
+export { default as ActiveTicketTrackingPage } from './ActiveTicketTrackingPage';
+export { default as AdminAnalyticsPage } from './AdminAnalyticsPage';
 export { default as NotFoundPage } from './NotFoundPage';
