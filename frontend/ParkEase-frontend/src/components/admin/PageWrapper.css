@@ -1,0 +1,13 @@
+/* simple wrapper for admin pages */
+.page-wrapper {
+  padding: calc(var(--admin-content-padding) + 6px);
+}
+
+.page-heading {
+  margin-bottom: 26px;
+  font-size: 2rem;
+  color: #14223b;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.55);
+}

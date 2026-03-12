@@ -7,7 +7,7 @@ const LandingPage = () => {
   const navigate = useNavigate();
   const { user } = useApp();
   const [loading, setLoading] = useState(true);
-
+  
   useEffect(() => {
     setTimeout(() => setLoading(false), 800);
   }, []);

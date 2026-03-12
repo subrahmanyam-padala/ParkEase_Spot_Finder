@@ -12,7 +12,7 @@ function ForgotPasswordPage() {
     password: "",
     confirmPassword: ""
   });
-
+  
   const [otpSent, setOtpSent] = useState(false);
   const [message, setMessage] = useState("");
   const [isSuccess, setIsSuccess] = useState(false);

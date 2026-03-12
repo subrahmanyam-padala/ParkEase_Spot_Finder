@@ -1,0 +1,133 @@
+.revenue-section {
+  margin-bottom: 26px;
+}
+
+.revenue-section h3 {
+  margin: 0 0 14px;
+  font-size: 1.6rem;
+  color: #10233f;
+  font-weight: 800;
+}
+
+.revenue-card {
+  background: linear-gradient(140deg, rgba(255, 255, 255, 0.68), rgba(255, 255, 255, 0.44));
+  border: 1px solid rgba(255, 255, 255, 0.52);
+  border-radius: 20px;
+  box-shadow: 0 12px 28px rgba(31, 45, 61, 0.1);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  padding: 24px;
+  transition: transform 0.24s ease, box-shadow 0.24s ease;
+}
+
+.revenue-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 18px 34px rgba(31, 45, 61, 0.16);
+}
+
+.revenue-column-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  align-items: end;
+  gap: 14px;
+  min-height: 280px;
+}
+
+.revenue-column-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  transition: transform 0.18s ease;
+}
+
+.revenue-column-item:hover {
+  transform: translateY(-4px);
+}
+
+.revenue-column-value {
+  font-size: 0.9rem;
+  color: #3c5574;
+  font-weight: 600;
+}
+
+.revenue-column-bar {
+  width: 52px;
+  border-radius: 12px 12px 0 0;
+  background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
+  box-shadow: 0 10px 18px rgba(37, 99, 235, 0.28);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.revenue-column-item:hover .revenue-column-bar {
+  transform: scaleY(1.05);
+  box-shadow: 0 14px 22px rgba(37, 99, 235, 0.37);
+}
+
+.revenue-column-label {
+  font-size: 0.95rem;
+  color: #274667;
+  font-weight: 600;
+}
+
+.pie-row {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.payment-pie {
+  width: 190px;
+  height: 190px;
+  border-radius: 50%;
+  border: 10px solid #f8fafc;
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.13);
+  transition: transform 0.24s ease;
+}
+
+.payment-pie:hover {
+  transform: scale(1.04) rotate(4deg);
+}
+
+.payment-legend p {
+  margin: 0 0 12px;
+  color: #334155;
+  font-size: 1.08rem;
+  font-weight: 600;
+}
+
+.dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 8px;
+}
+
+.paid-dot {
+  background: #10b981;
+}
+
+.pending-dot {
+  background: #f59e0b;
+}
+
+@media (max-width: 768px) {
+  .revenue-section h3 {
+    font-size: 1.3rem;
+  }
+
+  .pie-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .revenue-card {
+    padding: 16px;
+  }
+
+  .payment-pie {
+    width: 156px;
+    height: 156px;
+  }
+}

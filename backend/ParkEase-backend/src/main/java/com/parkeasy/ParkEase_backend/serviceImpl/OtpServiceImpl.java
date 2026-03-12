@@ -4,7 +4,6 @@ import com.parkeasy.ParkEase_backend.entity.OtpVerification;
 import com.parkeasy.ParkEase_backend.repository.OtpRepository;
 import com.parkeasy.ParkEase_backend.service.EmailService;
 import com.parkeasy.ParkEase_backend.service.OtpService;
-import jakarta.mail.MessagingException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

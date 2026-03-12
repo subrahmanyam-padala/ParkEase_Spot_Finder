@@ -1,0 +1,73 @@
+/* ===============================
+   Admin Register Page
+================================= */
+
+.admin-register-wrapper {
+  background: url('../../images/parking-bg.jpg') no-repeat center center fixed;
+  background-size: cover;
+  min-height: 100vh;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.admin-register-card {
+  width: 420px;
+  padding: 40px;
+
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(10px);
+
+  border-radius: 16px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+
+  color: #ffffff;
+}
+
+.admin-title {
+  text-align: center;
+  margin-bottom: 25px;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 12px;
+  border-radius: 6px;
+  border: none;
+  outline: none;
+}
+
+.register-btn {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 6px;
+  background: #b08968;
+  color: white;
+  font-weight: 500;
+  cursor: pointer;
+  transition: 0.3s ease;
+}
+
+.register-btn:hover {
+  background: #9c6f4d;
+}
+
+.login-link {
+  margin-top: 15px;
+  text-align: center;
+}
+
+.login-link span {
+  color: #f0c674;
+  cursor: pointer;
+}
+
+.login-link span:hover {
+  text-decoration: underline;
+}

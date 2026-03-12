@@ -1,0 +1,76 @@
+package com.parkeasy.ParkEase_backend.config;
+
+import com.parkeasy.ParkEase_backend.entity.AdminAlert;
+import com.parkeasy.ParkEase_backend.entity.ParkingBooking;
+import com.parkeasy.ParkEase_backend.entity.ParkingSlot;
+import com.parkeasy.ParkEase_backend.repository.AdminAlertRepository;
+import com.parkeasy.ParkEase_backend.repository.ParkingBookingRepository;
+import com.parkeasy.ParkEase_backend.repository.ParkingSlotRepository;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
+@Configuration
+public class AdminDataInitializer {
+
+	@Bean
+	CommandLineRunner seedAdminData(ParkingSlotRepository parkingSlotRepository,
+			ParkingBookingRepository parkingBookingRepository, AdminAlertRepository adminAlertRepository) {
+		return args -> {
+			if (parkingSlotRepository.count() == 0) {
+				List<ParkingSlot> slots = new ArrayList<>();
+				for (int i = 1; i <= 12; i++) {
+					ParkingSlot slot = new ParkingSlot();
+					slot.setNumber("A" + i);
+					slot.setFloor(i <= 6 ? "Ground" : "Level 1");
+					slot.setStatus(i % 4 == 0 ? "occupied" : "available");
+					slot.setPricePerHour(BigDecimal.valueOf(75 + (i % 3) * 25L));
+					slots.add(slot);
+				}
+				parkingSlotRepository.saveAll(slots);
+			}
+
+			if (parkingBookingRepository.count() == 0) {
+				List<ParkingBooking> bookings = new ArrayList<>();
+				bookings.add(buildBooking("Aarav Sharma", "aarav@example.com", "A1", 2, 150, true, "upi", 1));
+				bookings.add(buildBooking("Meera Nair", "meera@example.com", "A4", 3, 300, true, "card", 2));
+				bookings.add(buildBooking("Guest User", "guest@example.com", "A8", 1, 100, false, null, 0));
+				parkingBookingRepository.saveAll(bookings);
+			}
+
+			if (adminAlertRepository.count() == 0) {
+				AdminAlert alertOne = new AdminAlert();
+				alertOne.setMessage("Slot A4 is marked occupied for more than 2 hours.");
+				alertOne.setType("Occupancy");
+
+				AdminAlert alertTwo = new AdminAlert();
+				alertTwo.setMessage("Daily revenue crossed Rs 400. Review payment summary.");
+				alertTwo.setType("Revenue");
+
+				adminAlertRepository.saveAll(List.of(alertOne, alertTwo));
+			}
+		};
+	}
+
+	private ParkingBooking buildBooking(String userName, String email, String slot, int duration, int amount, boolean paid,
+			String paymentMethod, int daysAgo) {
+		ParkingBooking booking = new ParkingBooking();
+		booking.setUserName(userName);
+		booking.setUserEmail(email);
+		booking.setSlot(slot);
+		booking.setDuration(duration);
+		booking.setAmount(BigDecimal.valueOf(amount));
+		booking.setPricePerHour(BigDecimal.valueOf(amount / duration));
+		booking.setPaid(paid);
+		booking.setPaymentMethod(paymentMethod);
+		booking.setValidUntil(LocalDateTime.now().plusHours(duration));
+		booking.setCreatedAt(LocalDateTime.now().minusDays(daysAgo));
+		booking.setUpdatedAt(LocalDateTime.now().minusDays(daysAgo));
+		return booking;
+	}
+}
