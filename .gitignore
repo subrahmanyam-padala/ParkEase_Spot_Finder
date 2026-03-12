@@ -1,4 +1,5 @@
-node_modules
-frontend/ParkEase-frontend/build/
-backend/ParkEase-backend/.m2repo/
-.vscode/
+node_modules 
+frontend_Ex/
+scanner-backend/
+ 
+ 
