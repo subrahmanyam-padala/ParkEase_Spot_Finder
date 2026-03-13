@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import PageWrapper from '../../components/admin/PageWrapper';
 import KpiCard from '../../components/admin/KpiCard';
 import { formatINR } from '../../utils/adminMetrics';
@@ -52,16 +53,53 @@ const AdminDashboardPage = () => {
     })
     .join(' ');
 
+  const currentDate = new Date().toLocaleDateString('en-IN', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+
   return (
     <PageWrapper title="Dashboard">
       <div className="admin-dashboard-theme">
+        {/* Welcome Header */}
+        <div className="dashboard-welcome">
+          <div className="welcome-content">
+            <h1>Welcome back, Admin! 👋</h1>
+            <p>{currentDate}</p>
+          </div>
+          <div className="welcome-icon">🅿️</div>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="quick-actions-grid">
+          <Link to="/admin/scanner" className="quick-action-btn">
+            <div className="action-icon scan">📷</div>
+            <span className="action-label">Scan QR</span>
+          </Link>
+          <Link to="/admin/bookings" className="quick-action-btn">
+            <div className="action-icon bookings">📋</div>
+            <span className="action-label">Bookings</span>
+          </Link>
+          <Link to="/admin/parking-spots" className="quick-action-btn">
+            <div className="action-icon spots">🚗</div>
+            <span className="action-label">Manage Spots</span>
+          </Link>
+          <Link to="/admin/revenue" className="quick-action-btn">
+            <div className="action-icon revenue">💰</div>
+            <span className="action-label">Revenue</span>
+          </Link>
+        </div>
+
+        {/* KPI Cards */}
         <div className="kpi-cards">
-          <KpiCard title="Total Parking Slots" value={overview.totalParkingSlots} />
-          <KpiCard title="Occupied Slots" value={overview.occupiedSlots} />
-          <KpiCard title="Available Slots" value={overview.availableSlots} />
-          <KpiCard title="Revenue Today" value={formatINR(overview.todayRevenue)} />
-          <KpiCard title="Active Bookings" value={overview.bookingsCount} />
-          <KpiCard title="Registered Users" value={overview.usersCount} />
+          <KpiCard title="Total Parking Slots" value={overview.totalParkingSlots} icon="🅿️" />
+          <KpiCard title="Occupied Slots" value={overview.occupiedSlots} icon="🔴" />
+          <KpiCard title="Available Slots" value={overview.availableSlots} icon="🟢" />
+          <KpiCard title="Revenue Today" value={formatINR(overview.todayRevenue)} icon="💵" />
+          <KpiCard title="Active Bookings" value={overview.bookingsCount} icon="📑" />
+          <KpiCard title="Registered Users" value={overview.usersCount} icon="👥" />
         </div>
 
         <section className="dashboard-section">

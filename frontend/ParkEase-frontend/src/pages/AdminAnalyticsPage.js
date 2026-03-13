@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
+import { isAdminLoggedIn } from '../utils/adminAuth';
 import { Navbar, Footer } from '../components';
 
 const hourlyTraffic = [
@@ -29,7 +30,7 @@ const AdminAnalyticsPage = () => {
   const { user, bookings } = useApp();
   const navigate = useNavigate();
 
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = isAdminLoggedIn() || user?.role === 'admin';
 
   const totalRevenue = bookings.reduce((sum, booking) => sum + (booking.paid ? booking.amount : 0), 0);
   const activeTickets = bookings.filter((booking) => booking.paid).length;

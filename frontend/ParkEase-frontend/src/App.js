@@ -1,5 +1,5 @@
- import React from 'react';
-import { Routes, Route } from 'react-router-dom';
+import React from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { AppProvider } from './context/AppContext';
 import { ProtectedRoute } from './components';
 
@@ -18,6 +18,9 @@ import {
 
 import RegistrationPage from "./pages/RegistrationPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import ChatbotPage from "./pages/ChatbotPage";
+import MyBookingsPage from "./pages/MyBookingsPage";
+import ProfilePage from "./pages/ProfilePage";
 
 /* ================= ADMIN ================= */
 import AdminLayout from './components/AdminLayout';
@@ -29,9 +32,7 @@ import AdminUsersPage from './pages/admin/AdminUsersPage';
 import AdminAdminUsersPage from './pages/admin/AdminAdminUsersPage';
 import AdminReportsPage from './pages/admin/AdminReportsPage';
 import AdminAlertsPage from './pages/admin/AdminAlertsPage';
-import AdminLoginPage from './pages/admin/AdminLoginPage';
-import AdminRegisterPage from './pages/admin/AdminRegisterPage';
-import AdminForgotPasswordPage from './pages/admin/AdminForgotPasswordPage';
+import AdminScannerPage from './pages/admin/AdminScannerPage';
 
 function App() {
   return (
@@ -44,10 +45,10 @@ function App() {
         <Route path="/register" element={<RegistrationPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
-        {/* ================= ADMIN AUTH PAGES (Standalone) ================= */}
-        <Route path="/admin/login" element={<AdminLoginPage />} />
-        <Route path="/admin/register" element={<AdminRegisterPage />} />
-        <Route path="/admin/forgot-password" element={<AdminForgotPasswordPage />} />
+        {/* ================= ADMIN AUTH → REDIRECT TO UNIFIED LOGIN ================= */}
+        <Route path="/admin/login" element={<Navigate to="/login" replace />} />
+        <Route path="/admin/register" element={<Navigate to="/login" replace />} />
+        <Route path="/admin/forgot-password" element={<Navigate to="/login" replace />} />
         {/* ================= ADMIN DASHBOARD (Protected + Layout) ================= */}
         <Route
           path="/admin"
@@ -58,6 +59,7 @@ function App() {
           }
         >
           <Route path="dashboard" element={<AdminDashboardPage />} />
+          <Route path="scanner" element={<AdminScannerPage />} />
           <Route path="slots" element={<AdminSlotsPage />} />
           <Route path="bookings" element={<AdminBookingsPage />} />
           <Route path="revenue" element={<AdminRevenuePage />} />
@@ -122,8 +124,34 @@ function App() {
         <Route
           path="/admin/analytics"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requireAdmin>
               <AdminAnalyticsPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* ================= NEW USER ROUTES ================= */}
+        <Route
+          path="/chatbot"
+          element={
+            <ProtectedRoute>
+              <ChatbotPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/my-bookings"
+          element={
+            <ProtectedRoute>
+              <MyBookingsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <ProfilePage />
             </ProtectedRoute>
           }
         />

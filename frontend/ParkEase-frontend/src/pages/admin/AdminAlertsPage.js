@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import PageWrapper from '../../components/admin/PageWrapper';
 import AdminTable from '../../components/admin/AdminTable';
 import { dismissAdminAlert, fetchAdminAlerts } from '../../utils/adminApi';
 
 const AdminAlertsPage = () => {
   const [alerts, setAlerts] = useState([]);
+  const [filterType, setFilterType] = useState('ALL');
 
   const loadAlerts = async () => {
     try {
@@ -32,6 +33,11 @@ const AdminAlertsPage = () => {
     { key: 'date', label: 'Date' },
   ];
 
+  const rows = useMemo(() => {
+    if (filterType === 'ALL') return alerts;
+    return alerts.filter((a) => a.type?.toUpperCase() === filterType);
+  }, [alerts, filterType]);
+
   const handleDismiss = async (alert) => {
     try {
       await dismissAdminAlert(alert.id);
@@ -43,9 +49,23 @@ const AdminAlertsPage = () => {
 
   return (
     <PageWrapper title="Alerts">
+      <div className="d-flex flex-wrap gap-2 mb-3 align-items-center">
+        <select
+          className="form-select"
+          style={{ maxWidth: 200 }}
+          value={filterType}
+          onChange={(e) => setFilterType(e.target.value)}
+        >
+          <option value="ALL">All Types</option>
+          <option value="INFO">Info</option>
+          <option value="WARNING">Warning</option>
+          <option value="ERROR">Error</option>
+          <option value="SUCCESS">Success</option>
+        </select>
+      </div>
       <AdminTable
         headers={headers}
-        rows={alerts}
+        rows={rows}
         actions={(alert) => (
           <button
             className="btn btn-sm btn-outline-danger"

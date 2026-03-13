@@ -72,7 +72,7 @@ const AdminLayout = () => {
       } catch {
         clearAdminSession();
         if (mounted) {
-          navigate('/admin/login');
+          navigate('/login');
         }
       }
     };
@@ -101,7 +101,7 @@ const AdminLayout = () => {
   const handleAdminAuthAction = () => {
     clearAdminSession();
     setAdminSession(null);
-    navigate('/admin/login');
+    navigate('/login');
   };
 
   return (
@@ -161,6 +161,7 @@ const AdminLayout = () => {
       <div className="admin-body">
         <nav className={`admin-sidebar${sidebarOpen ? '' : ' closed'}`}>
           <NavLink to="/admin/dashboard">Dashboard</NavLink>
+          <NavLink to="/admin/scanner">🎯 Gate Scanner</NavLink>
           <NavLink to="/admin/slots">Slots</NavLink>
           <NavLink to="/admin/bookings" className="sidebar-link-with-badge">
             <span>Bookings</span>

@@ -9,7 +9,7 @@ const ProtectedRoute = ({ children, requireAdmin = false }) => {
 
   if (requireAdmin) {
     if (!isAdminLoggedIn()) {
-      return <Navigate to="/admin/login" replace />;
+      return <Navigate to="/login" replace />;
     }
 
     return children;

@@ -1,22 +1,37 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { useApp } from '../context/AppContext';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { createPaymentOrder, verifyPayment, getBookingById } from '../utils/api';
 import { Navbar, Footer, LoadingSpinner } from '../components';
+import BottomNav from '../components/BottomNav';
 
 const PaymentPage = () => {
   const { bookingId } = useParams();
   const navigate = useNavigate();
-  const { bookings, updateBooking } = useApp();
+  const location = useLocation();
   const [paymentMethod, setPaymentMethod] = useState('upi');
   const [loading, setLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
-
-  const booking = bookings.find((item) => item.id === parseInt(bookingId, 10));
+  const [booking, setBooking] = useState(null);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    const timer = setTimeout(() => setPageLoading(false), 500);
-    return () => clearTimeout(timer);
+    loadBooking();
   }, []);
+
+  const loadBooking = async () => {
+    try {
+      if (location.state?.booking) {
+        setBooking(location.state.booking);
+      } else {
+        const res = await getBookingById(bookingId);
+        setBooking(res.data);
+      }
+    } catch (err) {
+      setError('Could not load booking details.');
+    } finally {
+      setPageLoading(false);
+    }
+  };
 
   if (pageLoading) {
     return <LoadingSpinner message="Loading payment details..." />;
@@ -28,11 +43,8 @@ const PaymentPage = () => {
         <Navbar />
         <div className="flex-grow-1 d-flex align-items-center justify-content-center">
           <div className="text-center">
-            <i
-              className="bi bi-exclamation-triangle text-danger"
-              style={{ fontSize: '4rem' }}
-            ></i>
-            <h4 className="mt-3">Booking Not Found</h4>
+            <i className="bi bi-exclamation-triangle text-danger" style={{ fontSize: '4rem' }}></i>
+            <h4 className="mt-3">{error || 'Booking Not Found'}</h4>
             <button className="btn btn-primary mt-3" onClick={() => navigate('/book')}>
               Book New Slot
             </button>
@@ -45,11 +57,27 @@ const PaymentPage = () => {
 
   const handlePayment = async () => {
     setLoading(true);
+    setError('');
+    try {
+      // Step 1: Create payment order
+      const orderRes = await createPaymentOrder(booking.bookingId, paymentMethod);
+      const { razorpayOrderId } = orderRes.data;
 
-    setTimeout(async () => {
-      await updateBooking(booking.id, { paid: true, paymentMethod });
-      navigate(`/ticket/${booking.id}`);
-    }, 2000);
+      // Step 2: Verify payment (mock - backend auto-approves and sends email)
+      const verifyRes = await verifyPayment({
+        razorpayOrderId,
+        razorpayPaymentId: 'mock_pay_' + Date.now(),
+        razorpaySignature: 'mock_sig_' + Date.now(),
+      });
+
+      // Step 3: Navigate to ticket page with booking data
+      navigate(`/ticket/${booking.bookingId}`, {
+        state: { booking, payment: verifyRes.data },
+      });
+    } catch (err) {
+      setError(err.response?.data?.message || 'Payment failed. Please try again.');
+      setLoading(false);
+    }
   };
 
   const paymentMethods = [
@@ -72,6 +100,12 @@ const PaymentPage = () => {
             <p className="text-muted">Secure payment powered by ParkEase</p>
           </div>
 
+          {error && (
+            <div className="alert alert-danger fade-in">
+              <i className="bi bi-exclamation-circle me-2"></i>{error}
+            </div>
+          )}
+
           <div className="card mb-4 fade-in">
             <div className="card-header">
               <i className="bi bi-receipt me-2"></i>
@@ -80,27 +114,29 @@ const PaymentPage = () => {
             <div className="card-body">
               <div className="row text-center g-3">
                 <div className="col-4">
-                  <p className="text-muted small mb-1">Slot</p>
+                  <p className="text-muted small mb-1">Spot</p>
                   <p className="fw-bold fs-4 mb-0" style={{ color: '#00C4B4' }}>
-                    {booking.slot}
+                    {booking.spotLabel}
                   </p>
                 </div>
                 <div className="col-4">
-                  <p className="text-muted small mb-1">Duration</p>
-                  <p className="fw-bold fs-4 mb-0">{booking.duration}h</p>
+                  <p className="text-muted small mb-1">Vehicle</p>
+                  <p className="fw-bold mb-0">{booking.vehicleNumber}</p>
                 </div>
                 <div className="col-4">
                   <p className="text-muted small mb-1">Amount</p>
-                  <p className="fw-bold fs-4 mb-0">Rs {booking.amount}</p>
+                  <p className="fw-bold fs-4 mb-0">Rs {booking.totalAmount}</p>
                 </div>
               </div>
               <hr />
               <div className="d-flex justify-content-between align-items-center flex-wrap">
                 <span className="text-muted">
-                  <i className="bi bi-building me-1"></i>
-                  ABC City Mall, Andheri East
+                  <i className="bi bi-ticket-perforated me-1"></i>
+                  Ticket: {booking.ticketNumber}
                 </span>
-                <span className="text-muted small">Valid until {booking.validUntil}</span>
+                <span className="text-muted small">
+                  {booking.zone}
+                </span>
               </div>
             </div>
           </div>
@@ -130,56 +166,6 @@ const PaymentPage = () => {
             </div>
           </div>
 
-          {paymentMethod === 'upi' && (
-            <div className="card mb-4 fade-in">
-              <div className="card-body">
-                <label className="form-label fw-semibold">
-                  <i className="bi bi-phone me-1"></i> Enter UPI ID
-                </label>
-                <input type="text" className="form-control" placeholder="yourname@upi" />
-              </div>
-            </div>
-          )}
-
-          {paymentMethod === 'card' && (
-            <div className="card mb-4 fade-in">
-              <div className="card-body">
-                <div className="mb-3">
-                  <label className="form-label fw-semibold">Card Number</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    placeholder="1234 5678 9012 3456"
-                  />
-                </div>
-                <div className="row g-3">
-                  <div className="col-6">
-                    <label className="form-label fw-semibold">Expiry</label>
-                    <input type="text" className="form-control" placeholder="MM/YY" />
-                  </div>
-                  <div className="col-6">
-                    <label className="form-label fw-semibold">CVV</label>
-                    <input type="text" className="form-control" placeholder="123" />
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {paymentMethod === 'wallet' && (
-            <div className="card mb-4 fade-in">
-              <div className="card-body">
-                <label className="form-label fw-semibold">Select Wallet</label>
-                <select className="form-select">
-                  <option value="">Choose wallet...</option>
-                  <option value="paytm">Paytm Wallet</option>
-                  <option value="amazon">Amazon Pay</option>
-                  <option value="mobikwik">MobiKwik</option>
-                </select>
-              </div>
-            </div>
-          )}
-
           <div className="text-center mb-4 fade-in">
             <p className="text-muted small">
               <i className="bi bi-shield-lock me-1"></i>
@@ -200,7 +186,7 @@ const PaymentPage = () => {
             ) : (
               <>
                 <i className="bi bi-lock me-2"></i>
-                Pay Rs {booking.amount} Now
+                Pay Rs {booking.totalAmount} Now
               </>
             )}
           </button>
@@ -208,6 +194,7 @@ const PaymentPage = () => {
       </div>
 
       <Footer />
+      <BottomNav />
     </div>
   );
 };

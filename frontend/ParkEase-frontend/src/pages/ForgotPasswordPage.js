@@ -35,7 +35,7 @@ function ForgotPasswordPage() {
     try {
       setLoading(true);
       const response = await axios.post(
-        "http://localhost:8080/api/auth/send-otp",
+        `http://${window.location.hostname}:8080/api/auth/send-otp`,
         { email: formData.email }
       );
 
@@ -69,7 +69,7 @@ function ForgotPasswordPage() {
       setLoading(true);
 
       const response = await axios.post(
-        "http://localhost:8080/api/auth/reset-password",
+        `http://${window.location.hostname}:8080/api/auth/reset-password`,
         {
           email: formData.email,
           otp: formData.otp,

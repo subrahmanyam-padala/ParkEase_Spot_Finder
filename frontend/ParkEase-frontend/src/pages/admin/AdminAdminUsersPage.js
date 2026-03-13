@@ -5,6 +5,7 @@ import { fetchAdminUsersList } from '../../utils/adminApi';
 
 const AdminAdminUsersPage = () => {
   const [admins, setAdmins] = useState([]);
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     let mounted = true;
@@ -37,24 +38,40 @@ const AdminAdminUsersPage = () => {
     { key: 'status', label: 'Status' },
   ];
 
-  const rows = useMemo(
-    () =>
-      admins.map((admin) => ({
-        id: admin.id,
-        name: admin.name,
-        email: admin.email,
-        mobile: admin.mobile,
-        adminId: admin.adminId,
-        createdAt: admin.createdAt
-          ? new Date(admin.createdAt).toLocaleString('en-IN')
-          : 'NA',
-        status: admin.status || 'Active',
-      })),
-    [admins]
-  );
+  const rows = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    const base = admins.map((admin) => ({
+      id: admin.id,
+      name: admin.name,
+      email: admin.email,
+      mobile: admin.mobile,
+      adminId: admin.adminId,
+      createdAt: admin.createdAt
+        ? new Date(admin.createdAt).toLocaleString('en-IN')
+        : 'NA',
+      status: admin.status || 'Active',
+    }));
+    if (!q) return base;
+    return base.filter(
+      (a) =>
+        a.name.toLowerCase().includes(q) ||
+        a.email.toLowerCase().includes(q) ||
+        (a.adminId || '').toLowerCase().includes(q) ||
+        a.status.toLowerCase().includes(q)
+    );
+  }, [admins, search]);
 
   return (
     <PageWrapper title="Admin Users">
+      <div className="d-flex flex-wrap gap-2 mb-3 align-items-center">
+        <input
+          className="form-control"
+          style={{ maxWidth: 240 }}
+          placeholder="Search admin by name, email, ID, status"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </div>
       <AdminTable headers={headers} rows={rows} />
     </PageWrapper>
   );

@@ -106,6 +106,7 @@ export const AppProvider = ({ children }) => {
   const logout = () => {
     setUser(null);
     localStorage.removeItem('parkease_user');
+    localStorage.removeItem('parkease_token');
   };
 
   const createBooking = async (booking) => {
