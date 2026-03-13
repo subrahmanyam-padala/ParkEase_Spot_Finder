@@ -40,6 +40,7 @@ public class SecurityConfig {
 						.requestMatchers("/api/auth/**", "/api/admin/auth/login", "/api/admin/auth/register",
 								"/api/admin/auth/reset-password", "/api/parking/**")
 						.permitAll()
+						.requestMatchers("/api/scan/**").permitAll()
 						.requestMatchers("/api/users/register").permitAll()
 						.requestMatchers("/api/spots/available/**", "/api/spots/zones", "/api/spots/stats").permitAll()
 						.requestMatchers("/api/chatbot/**").permitAll()

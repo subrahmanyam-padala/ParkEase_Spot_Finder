@@ -1,14 +1,17 @@
 package com.parkeasy.ParkEase_backend.config;
 
 import com.parkeasy.ParkEase_backend.entity.AdminAlert;
+import com.parkeasy.ParkEase_backend.entity.AdminUser;
 import com.parkeasy.ParkEase_backend.entity.ParkingBooking;
 import com.parkeasy.ParkEase_backend.entity.ParkingSlot;
 import com.parkeasy.ParkEase_backend.repository.AdminAlertRepository;
+import com.parkeasy.ParkEase_backend.repository.AdminUserRepository;
 import com.parkeasy.ParkEase_backend.repository.ParkingBookingRepository;
 import com.parkeasy.ParkEase_backend.repository.ParkingSlotRepository;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -20,8 +23,21 @@ public class AdminDataInitializer {
 
 	@Bean
 	CommandLineRunner seedAdminData(ParkingSlotRepository parkingSlotRepository,
-			ParkingBookingRepository parkingBookingRepository, AdminAlertRepository adminAlertRepository) {
+			ParkingBookingRepository parkingBookingRepository, AdminAlertRepository adminAlertRepository,
+			AdminUserRepository adminUserRepository, PasswordEncoder passwordEncoder) {
 		return args -> {
+			// Seed default admin user if not exists
+			if (!adminUserRepository.existsByAdminId("ANI")) {
+				AdminUser admin = new AdminUser();
+				admin.setName("Ani Admin");
+				admin.setEmail("ani@parkease.com");
+				admin.setMobile("9999999999");
+				admin.setAdminId("ANI");
+				admin.setPassword(passwordEncoder.encode("ani123456"));
+				admin.setStatus("Active");
+				adminUserRepository.save(admin);
+				System.out.println("[AdminDataInitializer] Default admin user created: ANI");
+			}
 			if (parkingSlotRepository.count() == 0) {
 				List<ParkingSlot> slots = new ArrayList<>();
 				for (int i = 1; i <= 12; i++) {
@@ -57,7 +73,8 @@ public class AdminDataInitializer {
 		};
 	}
 
-	private ParkingBooking buildBooking(String userName, String email, String slot, int duration, int amount, boolean paid,
+	private ParkingBooking buildBooking(String userName, String email, String slot, int duration, int amount,
+			boolean paid,
 			String paymentMethod, int daysAgo) {
 		ParkingBooking booking = new ParkingBooking();
 		booking.setUserName(userName);
