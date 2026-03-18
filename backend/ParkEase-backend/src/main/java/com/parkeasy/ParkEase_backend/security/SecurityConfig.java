@@ -44,6 +44,8 @@ public class SecurityConfig {
 						.requestMatchers("/api/users/register").permitAll()
 						.requestMatchers("/api/spots/available/**", "/api/spots/zones", "/api/spots/stats").permitAll()
 						.requestMatchers("/api/chatbot/**").permitAll()
+						.requestMatchers(HttpMethod.GET, "/api/complaints/all").hasRole("ADMIN")
+						.requestMatchers(HttpMethod.PUT, "/api/complaints/*/respond").hasRole("ADMIN")
 						.requestMatchers(HttpMethod.GET, "/api/admin/pricing", "/api/admin/pricing/calculate").permitAll()
 						.requestMatchers(HttpMethod.GET, "/api/admin/pricing/surge-status").permitAll()
 						.requestMatchers(HttpMethod.GET, "/api/admin/occupancy/current").permitAll()

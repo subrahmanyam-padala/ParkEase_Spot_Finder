@@ -2,7 +2,41 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 import PageWrapper from '../../components/admin/PageWrapper';
 import { scanQrCode, getTicketStatus, payOverstay } from '../../utils/api';
+import { getAdminBookings } from '../../utils/adminApi';
 import './AdminScannerPage.css';
+
+const parseBackendDate = (value) => {
+  if (!value) return null;
+
+  if (Array.isArray(value) && value.length >= 3) {
+    const [year, month, day, hour = 0, minute = 0, second = 0, nano = 0] = value;
+    const ms = Math.floor(Number(nano) / 1000000);
+    return new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute), Number(second), ms);
+  }
+
+  if (typeof value === 'object') {
+    const year = value.year;
+    const month = value.monthValue ?? value.month;
+    const day = value.dayOfMonth ?? value.day;
+    if (year && month && day) {
+      const hour = value.hour ?? 0;
+      const minute = value.minute ?? 0;
+      const second = value.second ?? 0;
+      const nano = value.nano ?? 0;
+      const ms = Math.floor(Number(nano) / 1000000);
+      return new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute), Number(second), ms);
+    }
+  }
+
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const isSameLocalDate = (a, b) => (
+  a.getFullYear() === b.getFullYear()
+  && a.getMonth() === b.getMonth()
+  && a.getDate() === b.getDate()
+);
 
 const AdminScannerPage = () => {
   const [scanning, setScanning] = useState(false);
@@ -12,13 +46,56 @@ const AdminScannerPage = () => {
   const [manualTicket, setManualTicket] = useState('');
   const [mode, setMode] = useState('scan'); // 'scan' | 'manual' | 'status'
   const [scanHistory, setScanHistory] = useState([]);
+  const [scannerStats, setScannerStats] = useState({
+    checkInsToday: 0,
+    checkOutsToday: 0,
+    overstaysToday: 0,
+  });
   const scannerInstanceRef = useRef(null);
 
   useEffect(() => {
+    loadScannerStats();
+
+    const intervalId = setInterval(loadScannerStats, 10000);
+
     return () => {
       stopScanner();
+      clearInterval(intervalId);
     };
   }, []);
+
+  const loadScannerStats = async () => {
+    try {
+      const bookings = await getAdminBookings();
+      const list = Array.isArray(bookings) ? bookings : [];
+      const today = new Date();
+
+      const getStatus = (b) => String(b?.status || '').toUpperCase();
+      const getEventDate = (b) => parseBackendDate(b?.updatedAt) || parseBackendDate(b?.createdAt);
+
+      const checkInsToday = list.filter((b) => {
+        const status = getStatus(b);
+        const date = getEventDate(b);
+        return status === 'CHECKED_IN' && date && isSameLocalDate(date, today);
+      }).length;
+
+      const checkOutsToday = list.filter((b) => {
+        const status = getStatus(b);
+        const date = getEventDate(b);
+        return status === 'COMPLETED' && date && isSameLocalDate(date, today);
+      }).length;
+
+      const overstaysToday = list.filter((b) => {
+        const status = getStatus(b);
+        const date = getEventDate(b);
+        return ['OVERSTAY', 'OVERSTAY_PAID'].includes(status) && date && isSameLocalDate(date, today);
+      }).length;
+
+      setScannerStats({ checkInsToday, checkOutsToday, overstaysToday });
+    } catch {
+      setScannerStats({ checkInsToday: 0, checkOutsToday: 0, overstaysToday: 0 });
+    }
+  };
 
   const stopScanner = async () => {
     if (scannerInstanceRef.current) {
@@ -82,6 +159,7 @@ const AdminScannerPage = () => {
       const normalizedData = normalizeQrData(qrData);
       const res = await scanQrCode(normalizedData);
       setResult(res.data);
+      loadScannerStats();
       // Add to history
       if (res.data?.data) {
         setScanHistory(prev => [{
@@ -121,6 +199,7 @@ const AdminScannerPage = () => {
     try {
       const res = await payOverstay(ticketNumber);
       setResult(res.data);
+      loadScannerStats();
     } catch (err) {
       setError(err.response?.data?.error || 'Payment failed');
     } finally {
@@ -181,15 +260,15 @@ const AdminScannerPage = () => {
         {/* Stats Bar */}
         <div className="scanner-stats-bar">
           <div className="stat-item">
-            <span className="stat-value">{scanHistory.filter(s => s.action === 'ENTRY').length}</span>
+            <span className="stat-value">{scannerStats.checkInsToday}</span>
             <span className="stat-label">Check-ins Today</span>
           </div>
           <div className="stat-item">
-            <span className="stat-value">{scanHistory.filter(s => s.action === 'EXIT' || s.action === 'OVERSTAY_EXIT').length}</span>
+            <span className="stat-value">{scannerStats.checkOutsToday}</span>
             <span className="stat-label">Check-outs Today</span>
           </div>
           <div className="stat-item overstay">
-            <span className="stat-value">{scanHistory.filter(s => s.action === 'EXIT_OVERSTAY' || s.action === 'OVERSTAY_PENDING').length}</span>
+            <span className="stat-value">{scannerStats.overstaysToday}</span>
             <span className="stat-label">Overstays</span>
           </div>
         </div>

@@ -1,196 +1,212 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import PageWrapper from '../../components/admin/PageWrapper';
-import AdminTable from '../../components/admin/AdminTable';
-import { createAdminSlot, fetchAdminSlots, updateAdminSlot } from '../../utils/adminApi';
+import React, { useState, useEffect, useCallback } from 'react';
+import { getAdminSlots, createAdminSlot, updateAdminSlot } from '../../utils/adminApi';
+import './AdminDashboardPage.css';
 
 const AdminSlotsPage = () => {
   const [slots, setSlots] = useState([]);
-  const [filter, setFilter] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState('ALL');
   const [showForm, setShowForm] = useState(false);
-  const [formMode, setFormMode] = useState('create');
-  const [formData, setFormData] = useState({ id: null, number: '', floor: 'Ground', status: 'available', pricePerHour: 0 });
+  const [editSlot, setEditSlot] = useState(null);
+  const [form, setForm] = useState({ number: '', floor: 'Ground', status: 'available', pricePerHour: '75' });
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
 
-  const loadSlots = async () => {
+  const loadSlots = useCallback(async () => {
     try {
-      const data = await fetchAdminSlots();
-      setSlots(data);
-    } catch {
+      const data = await getAdminSlots();
+      setSlots(data || []);
+      setError('');
+    } catch (err) {
       setSlots([]);
+      const msg = err.response?.data?.message || err.response?.data?.error || err.message || 'Failed to load slots';
+      setError(msg);
     }
-  };
-
-  useEffect(() => {
-    loadSlots();
+    finally { setLoading(false); }
   }, []);
 
-  const headers = [
-    { key: 'number', label: 'Slot #' },
-    { key: 'floor', label: 'Floor' },
-    { key: 'status', label: 'Status' },
-    { key: 'price', label: 'Price / Hour' },
-  ];
-
-  const filteredRows = useMemo(() => {
-    const q = filter.trim().toLowerCase();
-    const baseRows = slots.map((slot) => ({
-      id: slot.id,
-      number: slot.number,
-      floor: slot.floor || 'Ground',
-      status: slot.status,
-      price: `Rs ${Number(slot.pricePerHour) || 0}`,
-    }));
-    if (!q) return baseRows;
-    return baseRows.filter(
-      (r) =>
-        r.number.toLowerCase().includes(q) ||
-        r.floor.toLowerCase().includes(q) ||
-        r.status.toLowerCase().includes(q)
-    );
-  }, [slots, filter]);
-
-  const openForm = (mode, slot) => {
-    setFormMode(mode);
-    if (mode === 'edit' && slot) {
-      setFormData({
-        id: slot.id,
-        number: slot.number,
-        floor: slot.floor || 'Ground',
-        status: slot.status || 'available',
-        pricePerHour: Number(slot.pricePerHour) || 0,
-      });
-    } else {
-      setFormData({ id: null, number: '', floor: 'Ground', status: 'available', pricePerHour: 0 });
-    }
-    setShowForm(true);
-  };
+  useEffect(() => { loadSlots(); }, [loadSlots]);
 
   const handleSave = async (e) => {
     e.preventDefault();
-    const { id, number, floor, status, pricePerHour } = formData;
-    if (!number.trim()) {
-      window.alert('Slot number is required');
-      return;
-    }
-    if (Number.isNaN(Number(pricePerHour)) || Number(pricePerHour) < 0) {
-      window.alert('Enter a valid price');
-      return;
-    }
-    const payload = {
-      number: number.trim().toUpperCase(),
-      floor: floor.trim() || 'Ground',
-      status: status.trim().toLowerCase() === 'occupied' ? 'occupied' : 'available',
-      pricePerHour: Number(pricePerHour),
-    };
+    setError('');
+
+    // Validation
+    if (!form.number.trim()) { setError('Slot number is required'); return; }
+    if (!form.floor.trim()) { setError('Floor is required'); return; }
+    if (!form.status.trim()) { setError('Status is required'); return; }
+    const price = parseFloat(form.pricePerHour);
+    if (isNaN(price) || price < 0) { setError('Valid price is required'); return; }
+
+    setSaving(true);
     try {
-      setSaving(true);
-      if (formMode === 'edit' && id) {
-        await updateAdminSlot(id, payload);
+      const payload = {
+        number: form.number.trim().toUpperCase(),
+        floor: form.floor.trim(),
+        status: form.status.trim().toLowerCase(),
+        pricePerHour: price,
+      };
+
+      if (editSlot) {
+        await updateAdminSlot(editSlot.id, payload);
       } else {
         await createAdminSlot(payload);
       }
-      await loadSlots();
-      setShowForm(false);
-    } catch (error) {
-      window.alert(error.response?.data?.message || 'Unable to save slot.');
-    } finally {
-      setSaving(false);
-    }
+      resetForm();
+      loadSlots();
+    } catch (err) {
+      const msg = err.response?.data?.message || err.response?.data?.error || err.message || 'Failed to save';
+      setError(msg);
+    } finally { setSaving(false); }
   };
 
+  const resetForm = () => {
+    setShowForm(false);
+    setEditSlot(null);
+    setForm({ number: '', floor: 'Ground', status: 'available', pricePerHour: '75' });
+    setError('');
+  };
+
+  const startEdit = (slot) => {
+    setEditSlot(slot);
+    setForm({
+      number: slot.number || '',
+      floor: slot.floor || 'Ground',
+      status: slot.status || 'available',
+      pricePerHour: slot.pricePerHour?.toString() || '75',
+    });
+    setShowForm(true);
+  };
+
+  const filtered = slots.filter((s) => {
+    const matchFilter = filter === 'ALL' || s.status?.toLowerCase() === filter.toLowerCase();
+    const matchSearch = !search || s.number?.toLowerCase().includes(search.toLowerCase()) || s.floor?.toLowerCase().includes(search.toLowerCase());
+    return matchFilter && matchSearch;
+  });
+
   return (
-    <PageWrapper title="Slots">
-      <div className="d-flex flex-wrap gap-2 mb-3 align-items-center">
-        <button className="btn btn-primary" onClick={() => openForm('create')}>
-          + New Slot
-        </button>
-        <input
-          className="form-control"
-          style={{ maxWidth: 260 }}
-          placeholder="Search by number, floor, status"
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-        />
+    <div className="admin-dashboard-theme">
+      <div className="dashboard-welcome">
+        <div className="welcome-content">
+          <h1>Parking Slots</h1>
+          <p>Manage all parking slots ({slots.length} total)</p>
+        </div>
+        <div className="welcome-icon">🅿️</div>
       </div>
 
+      {/* Actions Bar */}
+      {error && <div className="alert alert-danger py-2 mb-3">{error}</div>}
+      <div className="d-flex flex-wrap gap-2 mb-4 align-items-center">
+        <button className="btn btn-primary" onClick={() => { resetForm(); setShowForm(!showForm); }}>
+          <i className={`bi ${showForm ? 'bi-x' : 'bi-plus'} me-1`}></i>
+          {showForm ? 'Cancel' : 'Add New Slot'}
+        </button>
+        <input type="text" className="form-control" style={{ maxWidth: '200px' }} placeholder="Search slots..."
+          value={search} onChange={(e) => setSearch(e.target.value)} />
+        <div className="d-flex gap-2 ms-auto flex-wrap">
+          {['ALL', 'available', 'occupied'].map((f) => (
+            <button key={f} className={`btn btn-sm ${filter === f ? 'btn-primary' : 'btn-outline-secondary'}`}
+              onClick={() => setFilter(f)}>
+              {f === 'ALL' ? `All (${slots.length})` : `${f.charAt(0).toUpperCase() + f.slice(1)} (${slots.filter(s => s.status?.toLowerCase() === f).length})`}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Form */}
       {showForm && (
-        <form className="card p-3 mb-3" onSubmit={handleSave}>
-          <div className="d-flex justify-content-between align-items-center mb-2">
-            <h5 className="mb-0">{formMode === 'edit' ? 'Edit Slot' : 'Add Slot'}</h5>
-            <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => setShowForm(false)}>
-              Close
-            </button>
-          </div>
-          <div className="row g-3">
-            <div className="col-md-3">
-              <label className="form-label">Slot Number</label>
-              <input
-                className="form-control"
-                value={formData.number}
-                onChange={(e) => setFormData({ ...formData, number: e.target.value })}
-                required
-              />
+        <div className="chart-panel mb-4">
+          <h6 className="fw-bold mb-3">{editSlot ? 'Edit Slot' : 'Create New Slot'}</h6>
+          {error && <div className="alert alert-danger py-2">{error}</div>}
+          <form onSubmit={handleSave}>
+            <div className="row g-3">
+              <div className="col-md-3">
+                <label className="form-label small fw-bold">Slot Number *</label>
+                <input type="text" className="form-control" value={form.number}
+                  onChange={(e) => setForm({ ...form, number: e.target.value })}
+                  placeholder="e.g., A-01" required />
+              </div>
+              <div className="col-md-3">
+                <label className="form-label small fw-bold">Floor *</label>
+                <select className="form-select" value={form.floor}
+                  onChange={(e) => setForm({ ...form, floor: e.target.value })}>
+                  <option value="Ground">Ground</option>
+                  <option value="Floor 1">Floor 1</option>
+                  <option value="Floor 2">Floor 2</option>
+                  <option value="Floor 3">Floor 3</option>
+                  <option value="Basement">Basement</option>
+                </select>
+              </div>
+              <div className="col-md-3">
+                <label className="form-label small fw-bold">Status *</label>
+                <select className="form-select" value={form.status}
+                  onChange={(e) => setForm({ ...form, status: e.target.value })}>
+                  <option value="available">Available</option>
+                  <option value="occupied">Occupied</option>
+                </select>
+              </div>
+              <div className="col-md-3">
+                <label className="form-label small fw-bold">Price/Hour (₹) *</label>
+                <input type="number" className="form-control" min="0" step="0.01"
+                  value={form.pricePerHour}
+                  onChange={(e) => setForm({ ...form, pricePerHour: e.target.value })} required />
+              </div>
             </div>
-            <div className="col-md-3">
-              <label className="form-label">Floor</label>
-              <input
-                className="form-control"
-                value={formData.floor}
-                onChange={(e) => setFormData({ ...formData, floor: e.target.value })}
-              />
+            <div className="mt-3">
+              <button type="submit" className="btn btn-primary me-2" disabled={saving}>
+                {saving ? <><span className="spinner-border spinner-border-sm me-1"></span>Saving...</> : (editSlot ? 'Update Slot' : 'Create Slot')}
+              </button>
+              {editSlot && <button type="button" className="btn btn-outline-secondary" onClick={resetForm}>Cancel Edit</button>}
             </div>
-            <div className="col-md-3">
-              <label className="form-label">Status</label>
-              <select
-                className="form-select"
-                value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-              >
-                <option value="available">Available</option>
-                <option value="occupied">Occupied</option>
-              </select>
-            </div>
-            <div className="col-md-3">
-              <label className="form-label">Price / Hour (₹)</label>
-              <input
-                type="number"
-                min="0"
-                className="form-control"
-                value={formData.pricePerHour}
-                onChange={(e) => setFormData({ ...formData, pricePerHour: e.target.value })}
-                required
-              />
-            </div>
-          </div>
-          <div className="d-flex gap-2 mt-3">
-            <button className="btn btn-success" type="submit" disabled={saving}>
-              {saving ? 'Saving...' : 'Save'}
-            </button>
-            <button
-              type="button"
-              className="btn btn-outline-secondary"
-              onClick={() => setShowForm(false)}
-              disabled={saving}
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
+          </form>
+        </div>
       )}
 
-      <AdminTable
-        headers={headers}
-        rows={filteredRows}
-        actions={(slot) => (
-          <button
-            className="btn btn-sm btn-outline-secondary"
-            onClick={() => openForm('edit', slot)}
-          >
-            Edit
-          </button>
-        )}
-      />
-    </PageWrapper>
+      {/* Slots Table */}
+      {loading ? (
+        <div className="text-center py-5"><div className="spinner-border text-primary"></div></div>
+      ) : (
+        <div className="chart-panel">
+          <div className="table-responsive">
+            <table className="table table-hover mb-0">
+              <thead>
+                <tr>
+                  <th>Slot</th>
+                  <th>Floor</th>
+                  <th>Status</th>
+                  <th>Price/Hour</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.length === 0 ? (
+                  <tr><td colSpan="5" className="text-center text-muted py-4">No slots found</td></tr>
+                ) : filtered.map((slot) => (
+                  <tr key={slot.id}>
+                    <td className="fw-bold">{slot.number}</td>
+                    <td>{slot.floor}</td>
+                    <td>
+                      <span className="badge" style={{
+                        backgroundColor: slot.status === 'available' ? '#22c55e' : '#ef4444', color: '#fff'
+                      }}>
+                        {slot.status}
+                      </span>
+                    </td>
+                    <td>₹{slot.pricePerHour}</td>
+                    <td>
+                      <button className="btn btn-sm btn-outline-primary" onClick={() => startEdit(slot)}>
+                        <i className="bi bi-pencil"></i>
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 

@@ -20,14 +20,17 @@ const TicketPage = () => {
 
   const loadTicket = async () => {
     try {
-      if (location.state?.booking) {
+      // Supports both { booking: {...} } and direct booking object in navigation state.
+      if (location.state?.bookingId) {
+        setBooking(location.state);
+      } else if (location.state?.booking) {
         setBooking(location.state.booking);
       } else if (bookingId) {
         const res = await getBookingById(bookingId);
         setBooking(res.data);
       }
     } catch (err) {
-      setError('Could not load ticket details.');
+      setError(err.response?.data?.error || err.response?.data?.message || 'Could not load ticket details.');
     } finally {
       setLoading(false);
     }

@@ -76,6 +76,18 @@ export const scanQrCode = (qrData) => API.post('/scan', { qrData });
 export const payOverstay = (ticketNumber) => API.post('/scan/pay-overstay', { ticketNumber });
 export const getTicketStatus = (ticketNumber) => API.get(`/scan/status/${ticketNumber}`);
 
+/* ==================== COMPLAINTS ==================== */
+export const createComplaint = (data) => API.post('/complaints', data);
+export const getMyComplaints = () => API.get('/complaints/my-complaints');
+export const getAllComplaints = () => API.get('/complaints/all');
+export const respondToComplaint = (id, data) => API.put(`/complaints/${id}/respond`, data);
+
+/* ==================== FORGOT PASSWORD ==================== */
+export const resetPassword = (data) => API.post('/auth/reset-password', data);
+
+/* ==================== USER OVERSTAY PAYMENT ==================== */
+export const payOverstayByUser = (ticketNumber) => API.post('/scan/pay-overstay', { ticketNumber });
+
 /* ==================== LEGACY PARKING API (for backward compat) ==================== */
 export const fetchParkingSlots = async () => {
   const { data } = await API.get('/parking/slots');
@@ -95,3 +107,4 @@ export const markParkingBookingPaid = async (bookingId, paymentMethod) => {
 };
 
 export default API;
+

@@ -2,11 +2,15 @@ package com.parkeasy.ParkEase_backend.config;
 
 import com.parkeasy.ParkEase_backend.entity.AdminAlert;
 import com.parkeasy.ParkEase_backend.entity.AdminUser;
+import com.parkeasy.ParkEase_backend.entity.Booking;
 import com.parkeasy.ParkEase_backend.entity.ParkingBooking;
+import com.parkeasy.ParkEase_backend.entity.ParkingSpot;
 import com.parkeasy.ParkEase_backend.entity.ParkingSlot;
 import com.parkeasy.ParkEase_backend.repository.AdminAlertRepository;
 import com.parkeasy.ParkEase_backend.repository.AdminUserRepository;
+import com.parkeasy.ParkEase_backend.repository.BookingRepository;
 import com.parkeasy.ParkEase_backend.repository.ParkingBookingRepository;
+import com.parkeasy.ParkEase_backend.repository.ParkingSpotRepository;
 import com.parkeasy.ParkEase_backend.repository.ParkingSlotRepository;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
@@ -16,13 +20,18 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Configuration
 public class AdminDataInitializer {
 
 	@Bean
 	CommandLineRunner seedAdminData(ParkingSlotRepository parkingSlotRepository,
+			ParkingSpotRepository parkingSpotRepository,
+			BookingRepository bookingRepository,
 			ParkingBookingRepository parkingBookingRepository, AdminAlertRepository adminAlertRepository,
 			AdminUserRepository adminUserRepository, PasswordEncoder passwordEncoder) {
 		return args -> {
@@ -51,6 +60,9 @@ public class AdminDataInitializer {
 				parkingSlotRepository.saveAll(slots);
 			}
 
+			syncAdminSlotsToUserSpots(parkingSlotRepository, parkingSpotRepository);
+			reconcileOccupancyFromBookings(bookingRepository, parkingSlotRepository, parkingSpotRepository);
+
 			if (parkingBookingRepository.count() == 0) {
 				List<ParkingBooking> bookings = new ArrayList<>();
 				bookings.add(buildBooking("Aarav Sharma", "aarav@example.com", "A1", 2, 150, true, "upi", 1));
@@ -71,6 +83,58 @@ public class AdminDataInitializer {
 				adminAlertRepository.saveAll(List.of(alertOne, alertTwo));
 			}
 		};
+	}
+
+	private void reconcileOccupancyFromBookings(BookingRepository bookingRepository,
+			ParkingSlotRepository parkingSlotRepository,
+			ParkingSpotRepository parkingSpotRepository) {
+		List<String> occupiedStatuses = Arrays.asList("ACTIVE", "PAID", "CHECKED_IN", "OVERSTAY", "OVERSTAY_PAID");
+		List<Booking> activeBookings = bookingRepository.findByStatusIn(occupiedStatuses);
+		Set<String> activeSpotLabels = activeBookings.stream()
+				.map(Booking::getParkingSpot)
+				.filter(java.util.Objects::nonNull)
+				.map(ParkingSpot::getSpotLabel)
+				.filter(label -> label != null && !label.isBlank())
+				.map(label -> label.trim().toUpperCase())
+				.collect(Collectors.toSet());
+
+		for (String rawSpotLabel : activeSpotLabels) {
+			if (rawSpotLabel == null || rawSpotLabel.isBlank()) {
+				continue;
+			}
+			String spotLabel = rawSpotLabel.trim().toUpperCase();
+
+			parkingSpotRepository.findBySpotLabel(spotLabel).ifPresent(spot -> {
+				spot.setIsOccupied(true);
+				parkingSpotRepository.save(spot);
+			});
+
+			parkingSlotRepository.findByNumber(spotLabel).ifPresent(slot -> {
+				slot.setStatus("occupied");
+				parkingSlotRepository.save(slot);
+			});
+		}
+		if (!activeSpotLabels.isEmpty()) {
+			System.out.println(
+					"[AdminDataInitializer] Reconciled occupancy for " + activeSpotLabels.size() + " active spot labels");
+		}
+	}
+
+	private void syncAdminSlotsToUserSpots(ParkingSlotRepository parkingSlotRepository,
+			ParkingSpotRepository parkingSpotRepository) {
+		List<ParkingSlot> slots = parkingSlotRepository.findAll();
+		for (ParkingSlot slot : slots) {
+			ParkingSpot spot = parkingSpotRepository.findBySpotLabel(slot.getNumber()).orElseGet(ParkingSpot::new);
+			spot.setSpotLabel(slot.getNumber());
+			spot.setZone(slot.getFloor());
+			spot.setIsOccupied("occupied".equalsIgnoreCase(slot.getStatus()));
+			spot.setPricePerHour(slot.getPricePerHour() != null ? slot.getPricePerHour().doubleValue() : 75.0);
+			if (spot.getNavigationPath() == null || spot.getNavigationPath().isBlank()) {
+				spot.setNavigationPath("Follow signs to " + slot.getNumber());
+			}
+			parkingSpotRepository.save(spot);
+		}
+		System.out.println("[AdminDataInitializer] Synced " + slots.size() + " admin slots to user parking spots");
 	}
 
 	private ParkingBooking buildBooking(String userName, String email, String slot, int duration, int amount,

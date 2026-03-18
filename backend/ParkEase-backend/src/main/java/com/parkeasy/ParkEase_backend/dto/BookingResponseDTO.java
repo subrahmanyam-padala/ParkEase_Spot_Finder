@@ -21,6 +21,8 @@ public class BookingResponseDTO {
   private String navigationPath;
   private String userName;
   private String userEmail;
+  private Integer durationHours;
+  private LocalDateTime createdAt;
 
   public BookingResponseDTO() {
   }
@@ -159,5 +161,21 @@ public class BookingResponseDTO {
 
   public void setUserEmail(String userEmail) {
     this.userEmail = userEmail;
+  }
+
+  public Integer getDurationHours() {
+    return durationHours;
+  }
+
+  public void setDurationHours(Integer durationHours) {
+    this.durationHours = durationHours;
+  }
+
+  public LocalDateTime getCreatedAt() {
+    return createdAt;
+  }
+
+  public void setCreatedAt(LocalDateTime createdAt) {
+    this.createdAt = createdAt;
   }
 }

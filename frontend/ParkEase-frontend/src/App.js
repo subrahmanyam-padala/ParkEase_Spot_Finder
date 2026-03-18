@@ -21,6 +21,7 @@ import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ChatbotPage from "./pages/ChatbotPage";
 import MyBookingsPage from "./pages/MyBookingsPage";
 import ProfilePage from "./pages/ProfilePage";
+import ComplaintsPage from "./pages/ComplaintsPage";
 
 /* ================= ADMIN ================= */
 import AdminLayout from './components/AdminLayout';
@@ -31,8 +32,11 @@ import AdminRevenuePage from './pages/admin/AdminRevenuePage';
 import AdminUsersPage from './pages/admin/AdminUsersPage';
 import AdminAdminUsersPage from './pages/admin/AdminAdminUsersPage';
 import AdminReportsPage from './pages/admin/AdminReportsPage';
-import AdminAlertsPage from './pages/admin/AdminAlertsPage';
+import AdminComplaintsPage from './pages/admin/AdminComplaintsPage';
 import AdminScannerPage from './pages/admin/AdminScannerPage';
+import AdminLoginPage from './pages/admin/AdminLoginPage';
+import AdminRegisterPage from './pages/admin/AdminRegisterPage';
+import AdminForgotPasswordPage from './pages/admin/AdminForgotPasswordPage';
 
 function App() {
   return (
@@ -45,10 +49,10 @@ function App() {
         <Route path="/register" element={<RegistrationPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
-        {/* ================= ADMIN AUTH → REDIRECT TO UNIFIED LOGIN ================= */}
-        <Route path="/admin/login" element={<Navigate to="/login" replace />} />
-        <Route path="/admin/register" element={<Navigate to="/login" replace />} />
-        <Route path="/admin/forgot-password" element={<Navigate to="/login" replace />} />
+        {/* ================= ADMIN AUTH (Separate Admin Pages) ================= */}
+        <Route path="/admin/login" element={<AdminLoginPage />} />
+        <Route path="/admin/register" element={<AdminRegisterPage />} />
+        <Route path="/admin/forgot-password" element={<AdminForgotPasswordPage />} />
         {/* ================= ADMIN DASHBOARD (Protected + Layout) ================= */}
         <Route
           path="/admin"
@@ -66,7 +70,7 @@ function App() {
           <Route path="users" element={<AdminUsersPage />} />
           <Route path="admin-users" element={<AdminAdminUsersPage />} />
           <Route path="reports" element={<AdminReportsPage />} />
-          <Route path="alerts" element={<AdminAlertsPage />} />
+          <Route path="complaints" element={<AdminComplaintsPage />} />
         </Route>
 
         {/* ================= USER PROTECTED ROUTES ================= */}
@@ -152,6 +156,14 @@ function App() {
           element={
             <ProtectedRoute>
               <ProfilePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/complaints"
+          element={
+            <ProtectedRoute>
+              <ComplaintsPage />
             </ProtectedRoute>
           }
         />

@@ -26,6 +26,9 @@ public class ParkingSpot {
   @Column(name = "navigation_path", length = 500)
   private String navigationPath;
 
+  @Column(name = "price_per_hour", nullable = false)
+  private Double pricePerHour = 75.0;
+
   public ParkingSpot() {
   }
 
@@ -35,6 +38,7 @@ public class ParkingSpot {
     this.isEvOnly = isEvOnly;
     this.navigationPath = navigationPath;
     this.isOccupied = false;
+    this.pricePerHour = 75.0;
   }
 
   public Long getSpotId() {
@@ -83,5 +87,13 @@ public class ParkingSpot {
 
   public void setNavigationPath(String navigationPath) {
     this.navigationPath = navigationPath;
+  }
+
+  public Double getPricePerHour() {
+    return pricePerHour;
+  }
+
+  public void setPricePerHour(Double pricePerHour) {
+    this.pricePerHour = pricePerHour;
   }
 }

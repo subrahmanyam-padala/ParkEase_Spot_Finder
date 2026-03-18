@@ -1,14 +1,8 @@
 package com.parkeasy.ParkEase_backend.controller;
 
-import com.parkeasy.ParkEase_backend.dto.AdminOverviewResponse;
-import com.parkeasy.ParkEase_backend.dto.ParkingSlotRequest;
-import com.parkeasy.ParkEase_backend.entity.AdminAlert;
-import com.parkeasy.ParkEase_backend.entity.AdminUser;
-import com.parkeasy.ParkEase_backend.entity.ParkingBooking;
-import com.parkeasy.ParkEase_backend.entity.ParkingSlot;
-import com.parkeasy.ParkEase_backend.entity.Users;
-import com.parkeasy.ParkEase_backend.service.AdminManagementService;
-import jakarta.validation.Valid;
+import java.util.List;
+import java.util.Map;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -20,8 +14,15 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
-import java.util.Map;
+import com.parkeasy.ParkEase_backend.dto.AdminOverviewResponse;
+import com.parkeasy.ParkEase_backend.dto.ParkingSlotRequest;
+import com.parkeasy.ParkEase_backend.entity.AdminAlert;
+import com.parkeasy.ParkEase_backend.entity.AdminUser;
+import com.parkeasy.ParkEase_backend.entity.ParkingSlot;
+import com.parkeasy.ParkEase_backend.entity.Users;
+import com.parkeasy.ParkEase_backend.service.AdminManagementService;
+
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -49,12 +50,13 @@ public class AdminManagementController {
 	}
 
 	@PutMapping("/slots/{slotId}")
-	public ResponseEntity<ParkingSlot> updateSlot(@PathVariable Long slotId, @Valid @RequestBody ParkingSlotRequest request) {
+	public ResponseEntity<ParkingSlot> updateSlot(@PathVariable("slotId") Long slotId,
+			@Valid @RequestBody ParkingSlotRequest request) {
 		return ResponseEntity.ok(adminManagementService.updateSlot(slotId, request));
 	}
 
 	@GetMapping("/bookings")
-	public ResponseEntity<List<ParkingBooking>> getBookings() {
+	public ResponseEntity<List<Map<String, Object>>> getBookings() {
 		return ResponseEntity.ok(adminManagementService.getAllBookings());
 	}
 
@@ -84,7 +86,7 @@ public class AdminManagementController {
 	}
 
 	@DeleteMapping("/alerts/{alertId}")
-	public ResponseEntity<Map<String, String>> dismissAlert(@PathVariable Long alertId) {
+	public ResponseEntity<Map<String, String>> dismissAlert(@PathVariable("alertId") Long alertId) {
 		adminManagementService.dismissAlert(alertId);
 		return ResponseEntity.ok(Map.of("message", "Alert dismissed"));
 	}

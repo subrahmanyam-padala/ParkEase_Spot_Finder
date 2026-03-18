@@ -23,6 +23,12 @@ public class AdminAlert {
 	@Column(name = "message", nullable = false)
 	private String message;
 
+	@Column(name = "title", length = 255)
+	private String title;
+
+	@Column(name = "details", columnDefinition = "TEXT")
+	private String details;
+
 	@Column(name = "type", nullable = false, length = 30)
 	private String type;
 
@@ -100,5 +106,21 @@ public class AdminAlert {
 
 	public void setUpdatedAt(LocalDateTime updatedAt) {
 		this.updatedAt = updatedAt;
+	}
+
+	public String getTitle() {
+		return title;
+	}
+
+	public void setTitle(String title) {
+		this.title = title;
+	}
+
+	public String getDetails() {
+		return details;
+	}
+
+	public void setDetails(String details) {
+		this.details = details;
 	}
 }

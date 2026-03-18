@@ -3,31 +3,19 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { Navbar, Footer, ErrorAlert } from '../components';
 import { loginUser } from '../utils/api';
-import { adminLogin } from '../utils/adminApi';
-import { setAdminSession, isAdminLoggedIn } from '../utils/adminAuth';
 
 const LoginPage = () => {
   const navigate = useNavigate();
   const { login, user } = useApp();
-  const [loginMode, setLoginMode] = useState('user'); // 'user' or 'admin'
   const [formData, setFormData] = useState({ username: '', password: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (loginMode === 'user' && user) {
+    if (user) {
       navigate('/dashboard');
     }
-    if (loginMode === 'admin' && isAdminLoggedIn()) {
-      navigate('/admin/dashboard');
-    }
-  }, [user, loginMode, navigate]);
-
-  const handleModeSwitch = (mode) => {
-    setLoginMode(mode);
-    setFormData({ username: '', password: '' });
-    setError('');
-  };
+  }, [user, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -35,30 +23,22 @@ const LoginPage = () => {
     setLoading(true);
 
     try {
-      if (loginMode === 'admin') {
-        // Admin login
-        const response = await adminLogin({
-          emailOrId: formData.username,
-          password: formData.password,
-        });
-        setAdminSession(response);
-        navigate('/admin/dashboard');
-      } else {
-        // User login
-        const res = await loginUser(formData.username, formData.password);
-        const { token, username, role, message } = res.data;
+      const res = await loginUser(formData.username, formData.password);
+      const { token, username, role, message, fullName, email, userId } = res.data;
 
-        if (token) {
-          localStorage.setItem('parkease_token', token);
-          login({
-            name: username,
-            username: username,
-            role: role,
-          });
-          navigate('/dashboard');
-        } else {
-          setError(message || 'Login failed');
-        }
+      if (token) {
+        localStorage.setItem('parkease_token', token);
+        login({
+          name: fullName || username,
+          fullName: fullName || username,
+          username: username,
+          email: email || '',
+          userId: userId,
+          role: role,
+        });
+        navigate('/dashboard');
+      } else {
+        setError(message || 'Login failed');
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Invalid credentials');
@@ -77,27 +57,11 @@ const LoginPage = () => {
             <div className="col-12 col-sm-10 col-md-8 col-lg-5">
               <div className="card fade-in">
                 <div className="card-header text-center">
-                  <h4 className="mb-3">
-                    <i className={`bi ${loginMode === 'admin' ? 'bi-shield-lock' : 'bi-person-circle'} me-2`}></i>
-                    {loginMode === 'admin' ? 'Admin Login' : 'Welcome Back'}
+                  <h4 className="mb-1">
+                    <i className="bi bi-person-circle me-2"></i>
+                    Welcome Back
                   </h4>
-                  {/* Toggle */}
-                  <div className="btn-group w-100" role="group">
-                    <button
-                      type="button"
-                      className={`btn ${loginMode === 'user' ? 'btn-primary' : 'btn-outline-primary'}`}
-                      onClick={() => handleModeSwitch('user')}
-                    >
-                      <i className="bi bi-person me-1"></i>User
-                    </button>
-                    <button
-                      type="button"
-                      className={`btn ${loginMode === 'admin' ? 'btn-primary' : 'btn-outline-primary'}`}
-                      onClick={() => handleModeSwitch('admin')}
-                    >
-                      <i className="bi bi-shield-lock me-1"></i>Admin
-                    </button>
-                  </div>
+                  <p style={{ color: 'white' }}>Sign in to your ParkEase account</p>
                 </div>
                 <div className="card-body p-4">
                   {error && <ErrorAlert message={error} onDismiss={() => setError('')} />}
@@ -105,13 +69,12 @@ const LoginPage = () => {
                   <form onSubmit={handleSubmit}>
                     <div className="mb-3">
                       <label className="form-label fw-semibold">
-                        <i className={`bi ${loginMode === 'admin' ? 'bi-key' : 'bi-person'} me-1`}></i>
-                        {loginMode === 'admin' ? 'Admin ID or Email' : 'Username'}
+                        <i className="bi bi-person me-1"></i> Username
                       </label>
                       <input
                         type="text"
                         className="form-control"
-                        placeholder={loginMode === 'admin' ? 'Enter admin ID or email' : 'Enter your username'}
+                        placeholder="Enter your username"
                         value={formData.username}
                         onChange={(e) =>
                           setFormData({ ...formData, username: e.target.value })
@@ -149,35 +112,43 @@ const LoginPage = () => {
                       ) : (
                         <>
                           <i className="bi bi-box-arrow-in-right me-2"></i>
-                          {loginMode === 'admin' ? 'Sign In as Admin' : 'Login'}
+                          Login
                         </>
                       )}
                     </button>
                   </form>
 
-                  {loginMode === 'user' && (
-                    <div className="text-center">
-                      <p className="text-muted small mb-2">Don't have an account?</p>
-                      <button
-                        className="btn btn-outline-primary w-100"
-                        onClick={() => navigate('/register')}
-                      >
-                        <i className="bi bi-person-plus me-2"></i>
-                        Create Account
-                      </button>
-                    </div>
-                  )}
+                  <div className="text-center">
+                    <p className="text-muted small mb-2">Don't have an account?</p>
+                    <button
+                      className="btn btn-outline-primary w-100"
+                      onClick={() => navigate('/register')}
+                    >
+                      <i className="bi bi-person-plus me-2"></i>
+                      Create Account
+                    </button>
+                  </div>
 
-                  {loginMode === 'user' && (
-                    <div className="text-center mt-2">
-                      <button
-                        className="btn btn-link text-muted small p-0"
-                        onClick={() => navigate('/forgot-password')}
-                      >
-                        Forgot Password?
-                      </button>
-                    </div>
-                  )}
+                  <div className="text-center mt-2">
+                    <button
+                      className="btn btn-link text-muted small p-0"
+                      onClick={() => navigate('/forgot-password')}
+                    >
+                      Forgot Password?
+                    </button>
+                  </div>
+
+                  <hr className="my-3" />
+
+                  <div className="text-center">
+                    <button
+                      className="btn btn-outline-dark btn-sm"
+                      onClick={() => navigate('/admin/login')}
+                    >
+                      <i className="bi bi-shield-lock me-1"></i>
+                      Admin Login
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

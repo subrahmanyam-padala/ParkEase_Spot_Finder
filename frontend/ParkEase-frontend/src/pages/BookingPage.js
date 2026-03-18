@@ -23,6 +23,9 @@ const BookingPage = () => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
+  const selectedRate = Number(selectedSpot?.pricePerHour) || 0;
+  const estimatedAmount = selectedRate * selectedDuration.hours;
+
   useEffect(() => {
     loadSpots();
   }, []);
@@ -234,6 +237,14 @@ const BookingPage = () => {
               <div className="summary-row">
                 <span>Duration</span>
                 <span className="fw-bold">{selectedDuration.label}</span>
+              </div>
+              <div className="summary-row">
+                <span>Rate / Hour</span>
+                <span className="fw-bold">₹{selectedSpot ? selectedRate : 0}</span>
+              </div>
+              <div className="summary-row">
+                <span>Estimated Amount</span>
+                <span className="fw-bold">₹{selectedSpot ? estimatedAmount : 0}</span>
               </div>
             </div>
           </div>

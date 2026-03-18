@@ -8,7 +8,7 @@ import BottomNav from '../components/BottomNav';
 const ProfilePage = () => {
   const { user, logout } = useApp();
   const navigate = useNavigate();
-  const [stats, setStats] = useState({ paymentCount: 0, totalSpent: 0 });
+  const [stats, setStats] = useState({ paymentCount: 0 });
 
   useEffect(() => {
     loadStats();
@@ -21,7 +21,6 @@ const ProfilePage = () => {
       const successPayments = payments.filter((p) => p.status === 'SUCCESS');
       setStats({
         paymentCount: successPayments.length,
-        totalSpent: successPayments.reduce((sum, p) => sum + (p.amount || 0), 0),
       });
     } catch {
       // Use defaults
@@ -57,21 +56,13 @@ const ProfilePage = () => {
             {user.phoneNumber && <p className="text-muted small">{user.phoneNumber}</p>}
           </div>
 
-          {/* Stats */}
+          {/* Stats - Only Payments */}
           <div className="row g-3 mb-4">
-            <div className="col-6">
+            <div className="col-12">
               <div className="card text-center">
                 <div className="card-body py-3">
                   <h4 className="fw-bold mb-0" style={{ color: 'var(--primary-teal)' }}>{stats.paymentCount}</h4>
-                  <small className="text-muted">Payments</small>
-                </div>
-              </div>
-            </div>
-            <div className="col-6">
-              <div className="card text-center">
-                <div className="card-body py-3">
-                  <h4 className="fw-bold mb-0" style={{ color: 'var(--primary-teal)' }}>₹{stats.totalSpent}</h4>
-                  <small className="text-muted">Total Spent</small>
+                  <small className="text-muted">Total Payments</small>
                 </div>
               </div>
             </div>
@@ -88,6 +79,11 @@ const ProfilePage = () => {
               <button className="list-group-item list-group-item-action d-flex align-items-center" onClick={() => navigate('/active-ticket')}>
                 <i className="bi bi-geo-alt me-3 text-success"></i>
                 Active Ticket
+                <i className="bi bi-chevron-right ms-auto text-muted"></i>
+              </button>
+              <button className="list-group-item list-group-item-action d-flex align-items-center" onClick={() => navigate('/complaints')}>
+                <i className="bi bi-exclamation-triangle me-3 text-warning"></i>
+                My Complaints
                 <i className="bi bi-chevron-right ms-auto text-muted"></i>
               </button>
               <button className="list-group-item list-group-item-action d-flex align-items-center text-danger" onClick={handleLogout}>

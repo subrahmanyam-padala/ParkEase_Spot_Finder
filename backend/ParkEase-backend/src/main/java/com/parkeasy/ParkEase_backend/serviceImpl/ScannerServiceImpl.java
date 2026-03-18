@@ -4,10 +4,12 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.parkeasy.ParkEase_backend.dto.ScanResponseDTO;
 import com.parkeasy.ParkEase_backend.entity.Booking;
+import com.parkeasy.ParkEase_backend.entity.ParkingSlot;
 import com.parkeasy.ParkEase_backend.entity.Payment;
 import com.parkeasy.ParkEase_backend.entity.PricingConfig;
 import com.parkeasy.ParkEase_backend.repository.BookingRepository;
 import com.parkeasy.ParkEase_backend.repository.ParkingSpotRepository;
+import com.parkeasy.ParkEase_backend.repository.ParkingSlotRepository;
 import com.parkeasy.ParkEase_backend.repository.PaymentRepository;
 import com.parkeasy.ParkEase_backend.repository.PricingConfigRepository;
 import com.parkeasy.ParkEase_backend.service.ScannerService;
@@ -26,15 +28,18 @@ public class ScannerServiceImpl implements ScannerService {
 
 	private final BookingRepository bookingRepository;
 	private final ParkingSpotRepository parkingSpotRepository;
+	private final ParkingSlotRepository parkingSlotRepository;
 	private final PaymentRepository paymentRepository;
 	private final PricingConfigRepository pricingConfigRepository;
 	private final ObjectMapper objectMapper;
 
 	public ScannerServiceImpl(BookingRepository bookingRepository, ParkingSpotRepository parkingSpotRepository,
-			PaymentRepository paymentRepository, PricingConfigRepository pricingConfigRepository,
+			ParkingSlotRepository parkingSlotRepository, PaymentRepository paymentRepository,
+			PricingConfigRepository pricingConfigRepository,
 			ObjectMapper objectMapper) {
 		this.bookingRepository = bookingRepository;
 		this.parkingSpotRepository = parkingSpotRepository;
+		this.parkingSlotRepository = parkingSlotRepository;
 		this.paymentRepository = paymentRepository;
 		this.pricingConfigRepository = pricingConfigRepository;
 		this.objectMapper = objectMapper;
@@ -73,8 +78,19 @@ public class ScannerServiceImpl implements ScannerService {
 
 		// ─── ENTRY SCAN (PAID → CHECKED_IN)
 		if ("PAID".equals(booking.getStatus())) {
+			LocalDateTime checkedIn = LocalDateTime.now();
 			booking.setStatus("CHECKED_IN");
-			booking.setCheckedInTime(LocalDateTime.now());
+			booking.setCheckedInTime(checkedIn);
+			booking.getParkingSpot().setIsOccupied(true);
+			parkingSpotRepository.save(booking.getParkingSpot());
+			syncLegacySlotStatus(booking.getParkingSpot().getSpotLabel(), true);
+
+			// Recalculate endTime from check-in time + original duration
+			if (booking.getStartTime() != null && booking.getEndTime() != null) {
+				long durationMinutes = ChronoUnit.MINUTES.between(booking.getStartTime(), booking.getEndTime());
+				booking.setEndTime(checkedIn.plusMinutes(durationMinutes));
+			}
+			booking.setStartTime(checkedIn);
 			bookingRepository.save(booking);
 
 			Map<String, Object> data = new LinkedHashMap<>();
@@ -104,6 +120,7 @@ public class ScannerServiceImpl implements ScannerService {
 
 				booking.getParkingSpot().setIsOccupied(false);
 				parkingSpotRepository.save(booking.getParkingSpot());
+				syncLegacySlotStatus(booking.getParkingSpot().getSpotLabel(), false);
 
 				Map<String, Object> data = new LinkedHashMap<>();
 				data.put("ticketNumber", booking.getTicketNumber());
@@ -183,6 +200,7 @@ public class ScannerServiceImpl implements ScannerService {
 
 			booking.getParkingSpot().setIsOccupied(false);
 			parkingSpotRepository.save(booking.getParkingSpot());
+			syncLegacySlotStatus(booking.getParkingSpot().getSpotLabel(), false);
 
 			Map<String, Object> data = new LinkedHashMap<>();
 			data.put("ticketNumber", booking.getTicketNumber());
@@ -298,5 +316,16 @@ public class ScannerServiceImpl implements ScannerService {
 	private double getBasePricePerHour() {
 		return pricingConfigRepository.findAll().stream().reduce((a, b) -> b).map(PricingConfig::getBasePricePerHour)
 				.orElse(50.0);
+	}
+
+	private void syncLegacySlotStatus(String spotLabel, boolean occupied) {
+		if (spotLabel == null || spotLabel.isBlank()) {
+			return;
+		}
+		Optional<ParkingSlot> legacySlot = parkingSlotRepository.findByNumber(spotLabel.trim().toUpperCase());
+		legacySlot.ifPresent(slot -> {
+			slot.setStatus(occupied ? "occupied" : "available");
+			parkingSlotRepository.save(slot);
+		});
 	}
 }

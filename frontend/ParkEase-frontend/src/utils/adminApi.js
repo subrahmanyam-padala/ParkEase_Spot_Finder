@@ -93,3 +93,26 @@ export const dismissAdminAlert = async (alertId) => {
   const { data } = await adminClient.delete(`/api/admin/alerts/${alertId}`);
   return data;
 };
+
+// --- Aliases for naming consistency ---
+export const getAdminSlots = fetchAdminSlots;
+export const getAdminBookings = fetchAdminBookings;
+export const getAdminUsers = fetchAdminUsers;
+export const getAdminUsersList = fetchAdminUsersList;
+export const getAdminRevenue = fetchAdminRevenue;
+export const getAdminReports = fetchAdminReports;
+export const getAdminAlerts = fetchAdminAlerts;
+
+// --- Complaint APIs via admin client ---
+export const getAdminComplaints = async () => {
+  const { data } = await adminClient.get('/api/complaints/all');
+  return data;
+};
+
+export const respondAdminComplaint = async (id, payload) => {
+  const { data } = await adminClient.put(`/api/complaints/${id}/respond`, payload);
+  return data;
+};
+
+export default adminClient;
+

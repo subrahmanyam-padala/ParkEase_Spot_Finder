@@ -72,7 +72,7 @@ const AdminLoginPage = () => {
             <button
               type="button"
               className="link-btn"
-              onClick={() => navigate('/admin/forgot-password')}
+              onClick={() => navigate('/forgot-password')}
             >
               Forgot Password?
             </button>
@@ -85,21 +85,6 @@ const AdminLoginPage = () => {
           >
             {loading ? 'Signing In...' : 'Sign In'}
           </button>
-
-          <div className="divider">
-            <span>OR</span>
-          </div>
-
-          <div className="register-section">
-            <p>Don&apos;t have an admin account?</p>
-            <button
-              type="button"
-              className="register-btn"
-              onClick={() => navigate('/admin/register')}
-            >
-              Create Admin Account
-            </button>
-          </div>
         </form>
       </div>
     </div>

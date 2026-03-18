@@ -13,30 +13,52 @@ import com.parkeasy.ParkEase_backend.repository.UsersRepository;
 import com.parkeasy.ParkEase_backend.service.EmailService;
 import com.parkeasy.ParkEase_backend.service.PaymentService;
 import com.parkeasy.ParkEase_backend.service.QrCodeService;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.File;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.format.DateTimeFormatter;
+import java.util.Base64;
 import java.util.List;
-import java.util.UUID;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 
 @Service
 public class PaymentServiceImpl implements PaymentService {
+	private static final String RAZORPAY_ORDERS_URL = "https://api.razorpay.com/v1/orders";
 
 	private final PaymentRepository paymentRepository;
 	private final BookingRepository bookingRepository;
 	private final UsersRepository usersRepository;
 	private final QrCodeService qrCodeService;
 	private final EmailService emailService;
+	private final ObjectMapper objectMapper;
+	private final HttpClient httpClient;
+
+	@Value("${razorpay.key.id}")
+	private String razorpayKeyId;
+
+	@Value("${razorpay.key.secret}")
+	private String razorpayKeySecret;
 
 	public PaymentServiceImpl(PaymentRepository paymentRepository, BookingRepository bookingRepository,
-			UsersRepository usersRepository, QrCodeService qrCodeService, EmailService emailService) {
+			UsersRepository usersRepository, QrCodeService qrCodeService, EmailService emailService,
+			ObjectMapper objectMapper) {
 		this.paymentRepository = paymentRepository;
 		this.bookingRepository = bookingRepository;
 		this.usersRepository = usersRepository;
 		this.qrCodeService = qrCodeService;
 		this.emailService = emailService;
+		this.objectMapper = objectMapper;
+		this.httpClient = HttpClient.newHttpClient();
 	}
 
 	@Override
@@ -52,18 +74,18 @@ public class PaymentServiceImpl implements PaymentService {
 			throw new RuntimeException("Booking is not active. Cannot create payment.");
 		}
 
-		// Generate mock order & transaction IDs
-		String mockOrderId = "mock_order_" + UUID.randomUUID().toString().substring(0, 12).toUpperCase();
-		String mockTransactionId = "TXN-" + UUID.randomUUID().toString().substring(0, 12).toUpperCase();
+		if (booking.getTotalAmount() == null || booking.getTotalAmount() <= 0) {
+			throw new RuntimeException("Invalid booking amount");
+		}
 
-		// Save payment record
+		String razorpayOrderId = createRazorpayOrder(booking);
+
 		Payment payment = new Payment();
 		payment.setBooking(booking);
 		payment.setUser(user);
 		payment.setAmount(booking.getTotalAmount());
-		payment.setPaymentMethod(requestDTO.getPaymentMethod() != null ? requestDTO.getPaymentMethod() : "MOCK_PAY");
-		payment.setRazorpayOrderId(mockOrderId);
-		payment.setTransactionId(mockTransactionId);
+		payment.setPaymentMethod(requestDTO.getPaymentMethod() != null ? requestDTO.getPaymentMethod() : "RAZORPAY");
+		payment.setRazorpayOrderId(razorpayOrderId);
 		payment.setStatus("PENDING");
 
 		Payment savedPayment = paymentRepository.save(payment);
@@ -72,10 +94,10 @@ public class PaymentServiceImpl implements PaymentService {
 		response.setPaymentId(savedPayment.getPaymentId());
 		response.setBookingId(booking.getBookingId());
 		response.setAmount(booking.getTotalAmount());
-		response.setRazorpayOrderId(mockOrderId);
-		response.setRazorpayKeyId("mock_key_for_demo");
+		response.setRazorpayOrderId(razorpayOrderId);
+		response.setRazorpayKeyId(razorpayKeyId);
 		response.setStatus("PENDING");
-		response.setMessage("Mock payment order created. Call /verify to auto-approve.");
+		response.setMessage("Payment order created successfully.");
 
 		return response;
 	}
@@ -86,10 +108,18 @@ public class PaymentServiceImpl implements PaymentService {
 		Payment payment = paymentRepository.findByRazorpayOrderId(verifyDTO.getRazorpayOrderId()).orElseThrow(
 				() -> new RuntimeException("Payment not found for order: " + verifyDTO.getRazorpayOrderId()));
 
-		// Mock verification: auto-approve all payments
-		String mockPaymentId = "mock_pay_" + UUID.randomUUID().toString().substring(0, 12).toUpperCase();
-		payment.setRazorpayPaymentId(mockPaymentId);
-		payment.setRazorpaySignature("mock_signature_valid");
+		if ("SUCCESS".equalsIgnoreCase(payment.getStatus())) {
+			return toResponseDTO(payment);
+		}
+
+		if (!isValidRazorpaySignature(verifyDTO.getRazorpayOrderId(), verifyDTO.getRazorpayPaymentId(),
+				verifyDTO.getRazorpaySignature())) {
+			throw new RuntimeException("Invalid payment signature");
+		}
+
+		payment.setRazorpayPaymentId(verifyDTO.getRazorpayPaymentId());
+		payment.setRazorpaySignature(verifyDTO.getRazorpaySignature());
+		payment.setTransactionId(verifyDTO.getRazorpayPaymentId());
 		payment.setStatus("SUCCESS");
 		paymentRepository.save(payment);
 
@@ -106,11 +136,69 @@ public class PaymentServiceImpl implements PaymentService {
 		response.setBookingId(booking.getBookingId());
 		response.setAmount(payment.getAmount());
 		response.setRazorpayOrderId(payment.getRazorpayOrderId());
-		response.setRazorpayPaymentId(mockPaymentId);
+		response.setRazorpayPaymentId(payment.getRazorpayPaymentId());
 		response.setStatus("SUCCESS");
-		response.setMessage("Payment verified successfully (Mock - auto-approved)!");
+		response.setMessage("Payment verified successfully.");
 
 		return response;
+	}
+
+	private String createRazorpayOrder(Booking booking) {
+		try {
+			long amountInPaise = Math.round(booking.getTotalAmount() * 100);
+			if (amountInPaise <= 0) {
+				throw new RuntimeException("Amount must be greater than zero");
+			}
+
+			String payload = objectMapper.writeValueAsString(java.util.Map.of(
+					"amount", amountInPaise,
+					"currency", "INR",
+					"receipt", "booking_" + booking.getBookingId()));
+
+			String auth = Base64.getEncoder().encodeToString(
+					(razorpayKeyId + ":" + razorpayKeySecret).getBytes(StandardCharsets.UTF_8));
+
+			HttpRequest request = HttpRequest.newBuilder()
+					.uri(URI.create(RAZORPAY_ORDERS_URL))
+					.header("Content-Type", "application/json")
+					.header("Authorization", "Basic " + auth)
+					.POST(HttpRequest.BodyPublishers.ofString(payload))
+					.build();
+
+			HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+			if (response.statusCode() < 200 || response.statusCode() >= 300) {
+				throw new RuntimeException("Failed to create Razorpay order: " + response.body());
+			}
+
+			JsonNode node = objectMapper.readTree(response.body());
+			String orderId = node.path("id").asText();
+			if (orderId == null || orderId.isBlank()) {
+				throw new RuntimeException("Razorpay order ID missing in response");
+			}
+			return orderId;
+		} catch (RuntimeException e) {
+			throw e;
+		} catch (Exception e) {
+			throw new RuntimeException("Unable to create Razorpay order", e);
+		}
+	}
+
+	private boolean isValidRazorpaySignature(String orderId, String paymentId, String signature) {
+		try {
+			String payload = orderId + "|" + paymentId;
+			Mac sha256Hmac = Mac.getInstance("HmacSHA256");
+			SecretKeySpec secretKey = new SecretKeySpec(razorpayKeySecret.getBytes(StandardCharsets.UTF_8),
+					"HmacSHA256");
+			sha256Hmac.init(secretKey);
+			byte[] hash = sha256Hmac.doFinal(payload.getBytes(StandardCharsets.UTF_8));
+			StringBuilder computedSignature = new StringBuilder(hash.length * 2);
+			for (byte b : hash) {
+				computedSignature.append(String.format("%02x", b));
+			}
+			return computedSignature.toString().equals(signature);
+		} catch (Exception e) {
+			throw new RuntimeException("Unable to verify payment signature", e);
+		}
 	}
 
 	@Override

@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { getMyActiveBookings } from '../utils/api';
+import React, { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { getMyActiveBookings, getMyBookings } from '../utils/api';
 import { Navbar, Footer } from '../components';
 import BottomNav from '../components/BottomNav';
 
@@ -17,6 +17,7 @@ const formatDuration = (milliseconds) => {
 
 const ActiveTicketTrackingPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [now, setNow] = useState(new Date());
   const [activeBooking, setActiveBooking] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -34,6 +35,19 @@ const ActiveTicketTrackingPage = () => {
   const loadActiveBooking = async () => {
     try {
       setLoading(true);
+      const selectedBookingId = location.state?.bookingId;
+
+      if (selectedBookingId) {
+        const allRes = await getMyBookings();
+        const allBookings = Array.isArray(allRes.data) ? allRes.data : [];
+        const selected = allBookings.find((b) => String(b.bookingId || b.id) === String(selectedBookingId));
+        if (selected) {
+          setActiveBooking(selected);
+          setError('');
+          return;
+        }
+      }
+
       const res = await getMyActiveBookings();
 
       console.log('[ActiveTicket] raw response:', res);
@@ -290,6 +304,10 @@ const ActiveTicketTrackingPage = () => {
                     <div className="map-floor">{activeBooking.zone || 'Ground Floor'}</div>
                     <div className="map-slot">
                       <span className="slot-pill">{activeBooking.spotLabel || '--'}</span>
+                    </div>
+                    <div className="small mt-2" style={{ color: '#334155' }}>
+                      <i className="bi bi-signpost-split me-1"></i>
+                      {activeBooking.navigationPath || `Follow parking signs to ${activeBooking.spotLabel || 'your slot'}`}
                     </div>
                     <small className="text-muted">ParkEase Mall Parking</small>
                   </div>

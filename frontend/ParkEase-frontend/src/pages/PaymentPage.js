@@ -4,6 +4,20 @@ import { createPaymentOrder, verifyPayment, getBookingById } from '../utils/api'
 import { Navbar, Footer, LoadingSpinner } from '../components';
 import BottomNav from '../components/BottomNav';
 
+const loadRazorpayScript = () => new Promise((resolve) => {
+  if (window.Razorpay) {
+    resolve(true);
+    return;
+  }
+
+  const script = document.createElement('script');
+  script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+  script.async = true;
+  script.onload = () => resolve(true);
+  script.onerror = () => resolve(false);
+  document.body.appendChild(script);
+});
+
 const PaymentPage = () => {
   const { bookingId } = useParams();
   const navigate = useNavigate();
@@ -20,14 +34,17 @@ const PaymentPage = () => {
 
   const loadBooking = async () => {
     try {
-      if (location.state?.booking) {
+      // BookingPage navigates with the booking object directly in state.
+      if (location.state?.bookingId) {
+        setBooking(location.state);
+      } else if (location.state?.booking) {
         setBooking(location.state.booking);
       } else {
         const res = await getBookingById(bookingId);
         setBooking(res.data);
       }
     } catch (err) {
-      setError('Could not load booking details.');
+      setError(err.response?.data?.error || err.response?.data?.message || 'Could not load booking details.');
     } finally {
       setPageLoading(false);
     }
@@ -59,23 +76,54 @@ const PaymentPage = () => {
     setLoading(true);
     setError('');
     try {
-      // Step 1: Create payment order
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded) {
+        throw new Error('Unable to load Razorpay checkout. Please try again.');
+      }
+
       const orderRes = await createPaymentOrder(booking.bookingId, paymentMethod);
-      const { razorpayOrderId } = orderRes.data;
+      const { razorpayOrderId, razorpayKeyId } = orderRes.data;
 
-      // Step 2: Verify payment (mock - backend auto-approves and sends email)
-      const verifyRes = await verifyPayment({
-        razorpayOrderId,
-        razorpayPaymentId: 'mock_pay_' + Date.now(),
-        razorpaySignature: 'mock_sig_' + Date.now(),
-      });
+      const options = {
+        key: razorpayKeyId,
+        amount: Math.round((booking.totalAmount || 0) * 100),
+        currency: 'INR',
+        name: 'ParkEase',
+        description: `Parking booking ${booking.ticketNumber || ''}`,
+        order_id: razorpayOrderId,
+        handler: async (response) => {
+          try {
+            const verifyRes = await verifyPayment({
+              razorpayOrderId: response.razorpay_order_id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature,
+            });
 
-      // Step 3: Navigate to ticket page with booking data
-      navigate(`/ticket/${booking.bookingId}`, {
-        state: { booking, payment: verifyRes.data },
+            navigate(`/ticket/${booking.bookingId}`, {
+              state: { booking, payment: verifyRes.data },
+            });
+          } catch (verifyErr) {
+            setError(verifyErr.response?.data?.error || verifyErr.response?.data?.message || 'Payment verification failed.');
+          } finally {
+            setLoading(false);
+          }
+        },
+        modal: {
+          ondismiss: () => setLoading(false),
+        },
+        theme: {
+          color: '#00C4B4',
+        },
+      };
+
+      const razorpay = new window.Razorpay(options);
+      razorpay.on('payment.failed', (response) => {
+        setError(response.error?.description || 'Payment failed. Please try again.');
+        setLoading(false);
       });
+      razorpay.open();
     } catch (err) {
-      setError(err.response?.data?.message || 'Payment failed. Please try again.');
+      setError(err.response?.data?.error || err.response?.data?.message || err.message || 'Payment failed. Please try again.');
       setLoading(false);
     }
   };

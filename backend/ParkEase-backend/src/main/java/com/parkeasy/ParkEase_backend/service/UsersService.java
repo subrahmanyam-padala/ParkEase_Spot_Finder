@@ -41,4 +41,14 @@ public interface UsersService {
 	 * Find user by username
 	 */
 	Users findByUsername(String username);
+
+	/**
+	 * Find user by email
+	 */
+	Users findByEmail(String email);
+
+	/**
+	 * Update user password (encoded)
+	 */
+	void updatePassword(Users user, String rawPassword);
 }

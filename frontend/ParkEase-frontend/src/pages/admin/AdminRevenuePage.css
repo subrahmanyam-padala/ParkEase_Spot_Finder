@@ -1,15 +1,15 @@
-.revenue-section {
+.admin-revenue-page .revenue-section {
   margin-bottom: 26px;
 }
 
-.revenue-section h3 {
+.admin-revenue-page .revenue-section h3 {
   margin: 0 0 14px;
   font-size: 1.6rem;
   color: #10233f;
   font-weight: 800;
 }
 
-.revenue-card {
+.admin-revenue-page .revenue-card {
   background: linear-gradient(140deg, rgba(255, 255, 255, 0.68), rgba(255, 255, 255, 0.44));
   border: 1px solid rgba(255, 255, 255, 0.52);
   border-radius: 20px;
@@ -20,12 +20,12 @@
   transition: transform 0.24s ease, box-shadow 0.24s ease;
 }
 
-.revenue-card:hover {
+.admin-revenue-page .revenue-card:hover {
   transform: translateY(-4px);
   box-shadow: 0 18px 34px rgba(31, 45, 61, 0.16);
 }
 
-.revenue-column-grid {
+.admin-revenue-page .revenue-column-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   align-items: end;
@@ -33,7 +33,7 @@
   min-height: 280px;
 }
 
-.revenue-column-item {
+.admin-revenue-page .revenue-column-item {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -41,17 +41,17 @@
   transition: transform 0.18s ease;
 }
 
-.revenue-column-item:hover {
+.admin-revenue-page .revenue-column-item:hover {
   transform: translateY(-4px);
 }
 
-.revenue-column-value {
+.admin-revenue-page .revenue-column-value {
   font-size: 0.9rem;
   color: #3c5574;
   font-weight: 600;
 }
 
-.revenue-column-bar {
+.admin-revenue-page .revenue-column-bar {
   width: 52px;
   border-radius: 12px 12px 0 0;
   background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
@@ -59,24 +59,24 @@
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.revenue-column-item:hover .revenue-column-bar {
+.admin-revenue-page .revenue-column-item:hover .revenue-column-bar {
   transform: scaleY(1.05);
   box-shadow: 0 14px 22px rgba(37, 99, 235, 0.37);
 }
 
-.revenue-column-label {
+.admin-revenue-page .revenue-column-label {
   font-size: 0.95rem;
   color: #274667;
   font-weight: 600;
 }
 
-.pie-row {
+.admin-revenue-page .pie-row {
   display: flex;
   align-items: center;
   gap: 24px;
 }
 
-.payment-pie {
+.admin-revenue-page .payment-pie {
   width: 190px;
   height: 190px;
   border-radius: 50%;
@@ -85,18 +85,18 @@
   transition: transform 0.24s ease;
 }
 
-.payment-pie:hover {
+.admin-revenue-page .payment-pie:hover {
   transform: scale(1.04) rotate(4deg);
 }
 
-.payment-legend p {
+.admin-revenue-page .payment-legend p {
   margin: 0 0 12px;
   color: #334155;
   font-size: 1.08rem;
   font-weight: 600;
 }
 
-.dot {
+.admin-revenue-page .dot {
   width: 11px;
   height: 11px;
   border-radius: 50%;
@@ -104,29 +104,29 @@
   margin-right: 8px;
 }
 
-.paid-dot {
+.admin-revenue-page .paid-dot {
   background: #10b981;
 }
 
-.pending-dot {
+.admin-revenue-page .pending-dot {
   background: #f59e0b;
 }
 
 @media (max-width: 768px) {
-  .revenue-section h3 {
+  .admin-revenue-page .revenue-section h3 {
     font-size: 1.3rem;
   }
 
-  .pie-row {
+  .admin-revenue-page .pie-row {
     flex-direction: column;
     align-items: flex-start;
   }
 
-  .revenue-card {
+  .admin-revenue-page .revenue-card {
     padding: 16px;
   }
 
-  .payment-pie {
+  .admin-revenue-page .payment-pie {
     width: 156px;
     height: 156px;
   }

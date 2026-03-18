@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getMyBookings, cancelBooking } from '../utils/api';
+import { getMyBookings, cancelBooking, payOverstayByUser } from '../utils/api';
 import { Navbar } from '../components';
 import BottomNav from '../components/BottomNav';
 
-const STATUS_TABS = ['ALL', 'ACTIVE', 'PAID', 'CHECKED_IN', 'COMPLETED', 'CANCELLED'];
+const STATUS_TABS = ['ALL', 'ACTIVE', 'PAID', 'CHECKED_IN', 'OVERSTAY', 'COMPLETED', 'CANCELLED'];
 
 const statusColor = (status) => {
   const map = {
@@ -19,10 +19,21 @@ const statusColor = (status) => {
   return map[status] || '#94a3b8';
 };
 
+const shouldShowQr = (status) => {
+  const normalized = (status || '').toUpperCase();
+  return ['ACTIVE', 'PAID', 'CHECKED_IN', 'OVERSTAY'].includes(normalized);
+};
+
+const canTrack = (status) => {
+  const normalized = (status || '').toUpperCase();
+  return ['ACTIVE', 'PAID', 'CHECKED_IN', 'OVERSTAY'].includes(normalized);
+};
+
 const MyBookingsPage = () => {
   const [bookings, setBookings] = useState([]);
   const [activeTab, setActiveTab] = useState('ALL');
   const [loading, setLoading] = useState(true);
+  const [payingOverstay, setPayingOverstay] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -47,6 +58,21 @@ const MyBookingsPage = () => {
       loadBookings();
     } catch {
       alert('Failed to cancel booking');
+    }
+  };
+
+  const handlePayOverstay = async (booking) => {
+    if (!booking.ticketNumber) return;
+    if (!window.confirm(`Pay overstay fee of ₹${booking.overstayFee || 0}?`)) return;
+    setPayingOverstay(booking.bookingId || booking.id);
+    try {
+      await payOverstayByUser(booking.ticketNumber);
+      alert('Overstay fee paid! A new ticket has been sent to your email.');
+      loadBookings();
+    } catch {
+      alert('Failed to pay overstay fee');
+    } finally {
+      setPayingOverstay(null);
     }
   };
 
@@ -88,7 +114,8 @@ const MyBookingsPage = () => {
           ) : (
             <div className="d-flex flex-column gap-3">
               {filtered.map((booking) => (
-                <div key={booking.bookingId || booking.id} className="card booking-card">
+                <div key={booking.bookingId || booking.id} className="card booking-card"
+                  style={{ borderLeft: `4px solid ${statusColor(booking.status)}` }}>
                   <div className="card-body p-3">
                     <div className="d-flex justify-content-between align-items-start mb-2">
                       <div>
@@ -110,18 +137,39 @@ const MyBookingsPage = () => {
                       <i className="bi bi-car-front me-1"></i>
                       {booking.vehicleNumber || 'N/A'}
                     </div>
-                    <div className="small text-muted mb-2">
+                    <div className="small text-muted mb-1">
                       <i className="bi bi-currency-rupee me-1"></i>
                       ₹{booking.totalAmount || booking.amount || 0}
                     </div>
+                    {booking.endTime && (
+                      <div className="small text-muted mb-2">
+                        <i className="bi bi-clock me-1"></i>
+                        Valid until: {new Date(booking.endTime).toLocaleString()}
+                      </div>
+                    )}
+
+                    {/* Overstay Alert + Payment (Feature #8) */}
+                    {booking.status === 'OVERSTAY' && (
+                      <div className="alert alert-danger py-2 mb-2">
+                        <i className="bi bi-exclamation-triangle-fill me-1"></i>
+                        <strong>Overstay!</strong> Fee: ₹{booking.overstayFee || 0}
+                        <button className="btn btn-danger btn-sm d-block mt-2 w-100"
+                          onClick={() => handlePayOverstay(booking)}
+                          disabled={payingOverstay === (booking.bookingId || booking.id)}>
+                          {payingOverstay === (booking.bookingId || booking.id)
+                            ? <><span className="spinner-border spinner-border-sm me-1"></span>Processing...</>
+                            : <><i className="bi bi-credit-card me-1"></i>Pay Overstay Fee</>}
+                        </button>
+                      </div>
+                    )}
 
                     <div className="d-flex gap-2">
-                      {booking.status === 'PAID' && (
+                      {shouldShowQr(booking.status) && (
                         <button
                           className="btn btn-sm btn-outline-primary flex-fill"
                           onClick={() => navigate(`/ticket/${booking.bookingId || booking.id}`)}
                         >
-                          <i className="bi bi-qr-code me-1"></i>View Ticket
+                          <i className="bi bi-ticket-perforated me-1"></i>Show Ticket
                         </button>
                       )}
                       {booking.status === 'ACTIVE' && (
@@ -139,6 +187,12 @@ const MyBookingsPage = () => {
                             Cancel
                           </button>
                         </>
+                      )}
+                      {canTrack(booking.status) && (
+                        <button className="btn btn-sm btn-outline-primary flex-fill"
+                          onClick={() => navigate('/active-ticket', { state: { bookingId: booking.bookingId || booking.id } })}>
+                          <i className="bi bi-geo-alt me-1"></i>Track
+                        </button>
                       )}
                     </div>
                   </div>

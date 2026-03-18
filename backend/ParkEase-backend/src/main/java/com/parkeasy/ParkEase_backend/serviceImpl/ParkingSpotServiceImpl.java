@@ -145,6 +145,7 @@ public class ParkingSpotServiceImpl implements ParkingSpotService {
         spot.getZone(),
         spot.getIsOccupied(),
         spot.getIsEvOnly(),
-        spot.getNavigationPath());
+        spot.getNavigationPath(),
+        spot.getPricePerHour());
   }
 }

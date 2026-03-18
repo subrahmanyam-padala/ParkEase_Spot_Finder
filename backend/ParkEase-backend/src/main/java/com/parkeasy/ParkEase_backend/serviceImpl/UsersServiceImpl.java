@@ -61,4 +61,15 @@ public class UsersServiceImpl implements UsersService {
 		return usersRepository.findByUsername(username).orElse(null);
 	}
 
+	@Override
+	public Users findByEmail(String email) {
+		return usersRepository.findByEmail(email).orElse(null);
+	}
+
+	@Override
+	public void updatePassword(Users user, String rawPassword) {
+		user.setPassword(passwordEncoder.encode(rawPassword));
+		usersRepository.save(user);
+	}
+
 }

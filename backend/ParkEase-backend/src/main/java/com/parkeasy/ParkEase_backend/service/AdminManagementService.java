@@ -4,7 +4,6 @@ import com.parkeasy.ParkEase_backend.dto.AdminOverviewResponse;
 import com.parkeasy.ParkEase_backend.dto.ParkingSlotRequest;
 import com.parkeasy.ParkEase_backend.entity.AdminAlert;
 import com.parkeasy.ParkEase_backend.entity.AdminUser;
-import com.parkeasy.ParkEase_backend.entity.ParkingBooking;
 import com.parkeasy.ParkEase_backend.entity.ParkingSlot;
 import com.parkeasy.ParkEase_backend.entity.Users;
 
@@ -21,7 +20,7 @@ public interface AdminManagementService {
 
 	ParkingSlot updateSlot(Long slotId, ParkingSlotRequest request);
 
-	List<ParkingBooking> getAllBookings();
+	List<Map<String, Object>> getAllBookings();
 
 	List<Users> getAllUsers();
 

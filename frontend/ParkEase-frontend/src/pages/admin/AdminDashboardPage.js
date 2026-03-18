@@ -39,15 +39,42 @@ const AdminDashboardPage = () => {
     };
 
     loadOverview();
+
+    // Keep dashboard metrics in sync after payments happen elsewhere.
+    const intervalId = setInterval(loadOverview, 8000);
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        loadOverview();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
     return () => {
       mounted = false;
+      clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
     };
   }, []);
 
-  const maxRevenue = Math.max(...overview.weeklyRevenue.map((item) => Number(item.value) || 0), 1);
-  const linePoints = overview.weeklyRevenue
+  const weeklyRevenue = Array.isArray(overview.weeklyRevenue) ? overview.weeklyRevenue : [];
+  const slotColumns = Array.isArray(overview.slotColumns) ? overview.slotColumns : [];
+  const paidCount = Number(overview.paidCount) || 0;
+  const pendingCount = Number(overview.pendingCount) || 0;
+  const totalPayments = Math.max(paidCount + pendingCount, 1);
+  const paidDegrees = (paidCount / totalPayments) * 360;
+  const paidPercent = Math.round((paidCount / totalPayments) * 100);
+  const pendingPercent = Math.round((pendingCount / totalPayments) * 100);
+  const totalParkingSlots = Number(overview.totalParkingSlots) || 0;
+  const occupiedSlots = Number(overview.occupiedSlots) || 0;
+  const availableSlots = Number(overview.availableSlots) || 0;
+  const occupiedPercent = Math.round((occupiedSlots / Math.max(totalParkingSlots, 1)) * 100);
+  const availablePercent = Math.round((availableSlots / Math.max(totalParkingSlots, 1)) * 100);
+
+  const maxRevenue = Math.max(...weeklyRevenue.map((item) => Number(item.value) || 0), 1);
+  const maxSlotCount = Math.max(...slotColumns.map((d) => Number(d.value) || 0), 1);
+  const linePoints = weeklyRevenue
     .map((item, index) => {
-      const x = (index / Math.max(overview.weeklyRevenue.length - 1, 1)) * 100;
+      const x = (index / Math.max(weeklyRevenue.length - 1, 1)) * 100;
       const y = 100 - ((Number(item.value) || 0) / maxRevenue) * 100;
       return `${x},${y}`;
     })
@@ -109,12 +136,36 @@ const AdminDashboardPage = () => {
               <polyline points={linePoints} />
             </svg>
             <div className="line-chart-labels">
-              {overview.weeklyRevenue.map((item) => (
+              {weeklyRevenue.map((item) => (
                 <div key={item.label} className="line-label-item">
                   <span>{item.label}</span>
                   <strong>{formatINR(item.value)}</strong>
                 </div>
               ))}
+            </div>
+
+            <div className="chart-table-wrap">
+              <table className="chart-table">
+                <thead>
+                  <tr>
+                    <th>Day</th>
+                    <th>Revenue</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {weeklyRevenue.length === 0 && (
+                    <tr>
+                      <td colSpan="2" className="empty-cell">No revenue data available</td>
+                    </tr>
+                  )}
+                  {weeklyRevenue.map((item) => (
+                    <tr key={`revenue-${item.label}`}>
+                      <td>{item.label}</td>
+                      <td>{formatINR(item.value)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         </section>
@@ -122,13 +173,12 @@ const AdminDashboardPage = () => {
         <section className="dashboard-section">
           <h2>Column Chart: Top Used Slots</h2>
           <div className="chart-panel">
-            {overview.slotColumns.length === 0 && (
+            {slotColumns.length === 0 && (
               <span className="empty-activity">No slot usage data available</span>
             )}
-            {overview.slotColumns.length > 0 && (
+            {slotColumns.length > 0 && (
               <div className="column-grid">
-                {overview.slotColumns.map((item) => {
-                  const maxSlotCount = Math.max(...overview.slotColumns.map((d) => Number(d.value) || 0), 1);
+                {slotColumns.map((item) => {
                   const h = Math.max(12, ((Number(item.value) || 0) / maxSlotCount) * 140);
                   return (
                     <div key={item.label} className="column-item">
@@ -140,6 +190,30 @@ const AdminDashboardPage = () => {
                 })}
               </div>
             )}
+
+            <div className="chart-table-wrap">
+              <table className="chart-table">
+                <thead>
+                  <tr>
+                    <th>Slot</th>
+                    <th>Usage Count</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {slotColumns.length === 0 && (
+                    <tr>
+                      <td colSpan="2" className="empty-cell">No slot usage data available</td>
+                    </tr>
+                  )}
+                  {slotColumns.map((item) => (
+                    <tr key={`slot-${item.label}`}>
+                      <td>{item.label}</td>
+                      <td>{item.value}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </section>
 
@@ -151,15 +225,39 @@ const AdminDashboardPage = () => {
                 className="payment-pie"
                 style={{
                   background: `conic-gradient(
-                    #198f65 0 ${(overview.paidCount / Math.max(overview.bookingsCount, 1)) * 360}deg,
-                    #d97706 ${(overview.paidCount / Math.max(overview.bookingsCount, 1)) * 360}deg 360deg
+                    #198f65 0 ${paidDegrees}deg,
+                    #d97706 ${paidDegrees}deg 360deg
                   )`,
                 }}
               />
               <div className="payment-legend">
-                <p><span className="dot paid-dot" /> Paid: {overview.paidCount}</p>
-                <p><span className="dot pending-dot" /> Pending: {overview.pendingCount}</p>
+                <p><span className="dot paid-dot" /> Paid: {paidCount}</p>
+                <p><span className="dot pending-dot" /> Pending: {pendingCount}</p>
               </div>
+            </div>
+
+            <div className="chart-table-wrap">
+              <table className="chart-table">
+                <thead>
+                  <tr>
+                    <th>Status</th>
+                    <th>Count</th>
+                    <th>Share</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Paid</td>
+                    <td>{paidCount}</td>
+                    <td>{paidPercent}%</td>
+                  </tr>
+                  <tr>
+                    <td>Pending</td>
+                    <td>{pendingCount}</td>
+                    <td>{pendingPercent}%</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
 
@@ -169,13 +267,13 @@ const AdminDashboardPage = () => {
               <div className="bar-item">
                 <div className="bar-header">
                   <span>Occupied</span>
-                  <strong>{overview.occupiedSlots}</strong>
+                  <strong>{occupiedSlots}</strong>
                 </div>
                 <div className="bar-track">
                   <div
                     className="bar-fill"
                     style={{
-                      width: `${(overview.occupiedSlots / Math.max(overview.totalParkingSlots, 1)) * 100}%`,
+                      width: `${occupiedPercent}%`,
                       background: '#d62839',
                     }}
                   />
@@ -184,17 +282,46 @@ const AdminDashboardPage = () => {
               <div className="bar-item">
                 <div className="bar-header">
                   <span>Available</span>
-                  <strong>{overview.availableSlots}</strong>
+                  <strong>{availableSlots}</strong>
                 </div>
                 <div className="bar-track">
                   <div
                     className="bar-fill"
                     style={{
-                      width: `${(overview.availableSlots / Math.max(overview.totalParkingSlots, 1)) * 100}%`,
+                      width: `${availablePercent}%`,
                       background: '#2f855a',
                     }}
                   />
                 </div>
+              </div>
+
+              <div className="chart-table-wrap">
+                <table className="chart-table">
+                  <thead>
+                    <tr>
+                      <th>Metric</th>
+                      <th>Count</th>
+                      <th>Percent</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>Occupied</td>
+                      <td>{occupiedSlots}</td>
+                      <td>{occupiedPercent}%</td>
+                    </tr>
+                    <tr>
+                      <td>Available</td>
+                      <td>{availableSlots}</td>
+                      <td>{availablePercent}%</td>
+                    </tr>
+                    <tr>
+                      <td>Total Slots</td>
+                      <td>{totalParkingSlots}</td>
+                      <td>100%</td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>

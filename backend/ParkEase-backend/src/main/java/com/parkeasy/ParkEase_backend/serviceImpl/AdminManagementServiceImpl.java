@@ -4,19 +4,28 @@ import com.parkeasy.ParkEase_backend.dto.AdminOverviewResponse;
 import com.parkeasy.ParkEase_backend.dto.ParkingSlotRequest;
 import com.parkeasy.ParkEase_backend.entity.AdminAlert;
 import com.parkeasy.ParkEase_backend.entity.AdminUser;
+import com.parkeasy.ParkEase_backend.entity.Booking;
 import com.parkeasy.ParkEase_backend.entity.ParkingBooking;
+import com.parkeasy.ParkEase_backend.entity.ParkingSpot;
 import com.parkeasy.ParkEase_backend.entity.ParkingSlot;
+import com.parkeasy.ParkEase_backend.entity.Payment;
 import com.parkeasy.ParkEase_backend.entity.Users;
 import com.parkeasy.ParkEase_backend.repository.AdminAlertRepository;
 import com.parkeasy.ParkEase_backend.repository.AdminUserRepository;
+import com.parkeasy.ParkEase_backend.repository.BookingRepository;
 import com.parkeasy.ParkEase_backend.repository.ParkingBookingRepository;
+import com.parkeasy.ParkEase_backend.repository.ParkingSpotRepository;
 import com.parkeasy.ParkEase_backend.repository.ParkingSlotRepository;
+import com.parkeasy.ParkEase_backend.repository.PaymentRepository;
 import com.parkeasy.ParkEase_backend.repository.UsersRepository;
 import com.parkeasy.ParkEase_backend.service.AdminManagementService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.time.format.TextStyle;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -31,16 +40,25 @@ import java.util.stream.Collectors;
 public class AdminManagementServiceImpl implements AdminManagementService {
 
 	private final ParkingSlotRepository parkingSlotRepository;
+	private final ParkingSpotRepository parkingSpotRepository;
 	private final ParkingBookingRepository parkingBookingRepository;
+	private final BookingRepository bookingRepository;
+	private final PaymentRepository paymentRepository;
 	private final UsersRepository usersRepository;
 	private final AdminUserRepository adminUserRepository;
 	private final AdminAlertRepository adminAlertRepository;
 
 	public AdminManagementServiceImpl(ParkingSlotRepository parkingSlotRepository,
-			ParkingBookingRepository parkingBookingRepository, UsersRepository usersRepository,
+			ParkingSpotRepository parkingSpotRepository,
+			ParkingBookingRepository parkingBookingRepository, BookingRepository bookingRepository,
+			PaymentRepository paymentRepository,
+			UsersRepository usersRepository,
 			AdminUserRepository adminUserRepository, AdminAlertRepository adminAlertRepository) {
 		this.parkingSlotRepository = parkingSlotRepository;
+		this.parkingSpotRepository = parkingSpotRepository;
 		this.parkingBookingRepository = parkingBookingRepository;
+		this.bookingRepository = bookingRepository;
+		this.paymentRepository = paymentRepository;
 		this.usersRepository = usersRepository;
 		this.adminUserRepository = adminUserRepository;
 		this.adminAlertRepository = adminAlertRepository;
@@ -50,6 +68,7 @@ public class AdminManagementServiceImpl implements AdminManagementService {
 	public AdminOverviewResponse getOverview() {
 		List<ParkingSlot> slots = parkingSlotRepository.findAll();
 		List<ParkingBooking> bookings = parkingBookingRepository.findAll();
+		List<Payment> payments = paymentRepository.findAll();
 		List<Users> users = usersRepository.findAll();
 
 		AdminOverviewResponse response = new AdminOverviewResponse();
@@ -77,6 +96,9 @@ public class AdminManagementServiceImpl implements AdminManagementService {
 			BigDecimal amount = booking.getAmount() == null ? BigDecimal.ZERO : booking.getAmount();
 			boolean isPaid = Boolean.TRUE.equals(booking.getPaid());
 			LocalDate createdDate = booking.getCreatedAt() == null ? null : booking.getCreatedAt().toLocalDate();
+			LocalDate paidDate = booking.getUpdatedAt() != null
+					? booking.getUpdatedAt().toLocalDate()
+					: createdDate;
 			String slotLabel = booking.getSlot();
 			if (slotLabel != null && !slotLabel.isBlank()) {
 				slotUsage.merge(slotLabel, Long.valueOf(1L), Long::sum);
@@ -85,17 +107,48 @@ public class AdminManagementServiceImpl implements AdminManagementService {
 			if (isPaid) {
 				paidCount++;
 				totalRevenue = totalRevenue.add(amount);
-				if (createdDate != null && createdDate.equals(today)) {
+				if (paidDate != null && paidDate.equals(today)) {
 					todayRevenue = todayRevenue.add(amount);
 				}
-				if (createdDate != null && createdDate.getYear() == today.getYear()
-						&& createdDate.getMonthValue() == today.getMonthValue()) {
+				if (paidDate != null && paidDate.getYear() == today.getYear()
+						&& paidDate.getMonthValue() == today.getMonthValue()) {
 					monthRevenue = monthRevenue.add(amount);
 				}
-				if (createdDate != null && revenueByDay.containsKey(createdDate)) {
-					revenueByDay.put(createdDate, revenueByDay.get(createdDate).add(amount));
+				if (paidDate != null && revenueByDay.containsKey(paidDate)) {
+					revenueByDay.put(paidDate, revenueByDay.get(paidDate).add(amount));
 				}
 			} else {
+				pendingCount++;
+			}
+		}
+
+		// Include revenue from the modern booking/payment flow.
+		for (Payment payment : payments) {
+			String status = payment.getStatus();
+			if (status == null) {
+				continue;
+			}
+
+			String normalizedStatus = status.trim().toUpperCase();
+			if ("SUCCESS".equals(normalizedStatus)) {
+				BigDecimal amount = payment.getAmount() == null ? BigDecimal.ZERO : BigDecimal.valueOf(payment.getAmount());
+				LocalDate paymentDate = payment.getUpdatedAt() != null
+						? payment.getUpdatedAt().toLocalDate()
+						: (payment.getCreatedAt() != null ? payment.getCreatedAt().toLocalDate() : null);
+
+				paidCount++;
+				totalRevenue = totalRevenue.add(amount);
+				if (paymentDate != null && paymentDate.equals(today)) {
+					todayRevenue = todayRevenue.add(amount);
+				}
+				if (paymentDate != null && paymentDate.getYear() == today.getYear()
+						&& paymentDate.getMonthValue() == today.getMonthValue()) {
+					monthRevenue = monthRevenue.add(amount);
+				}
+				if (paymentDate != null && revenueByDay.containsKey(paymentDate)) {
+					revenueByDay.put(paymentDate, revenueByDay.get(paymentDate).add(amount));
+				}
+			} else if ("PENDING".equals(normalizedStatus)) {
 				pendingCount++;
 			}
 		}
@@ -153,24 +206,101 @@ public class AdminManagementServiceImpl implements AdminManagementService {
 		slot.setFloor(request.getFloor().trim());
 		slot.setStatus(normalizeStatus(request.getStatus()));
 		slot.setPricePerHour(request.getPricePerHour());
-		return parkingSlotRepository.save(slot);
+		ParkingSlot savedSlot = parkingSlotRepository.save(slot);
+		syncParkingSpot(savedSlot, null);
+		return savedSlot;
 	}
 
 	@Override
 	public ParkingSlot updateSlot(Long slotId, ParkingSlotRequest request) {
 		ParkingSlot slot = parkingSlotRepository.findById(slotId)
 				.orElseThrow(() -> new RuntimeException("Slot not found"));
+		String previousNumber = slot.getNumber();
 		slot.setNumber(request.getNumber().trim().toUpperCase());
 		slot.setFloor(request.getFloor().trim());
 		slot.setStatus(normalizeStatus(request.getStatus()));
 		slot.setPricePerHour(request.getPricePerHour());
-		return parkingSlotRepository.save(slot);
+		ParkingSlot savedSlot = parkingSlotRepository.save(slot);
+		syncParkingSpot(savedSlot, previousNumber);
+		return savedSlot;
 	}
 
 	@Override
-	public List<ParkingBooking> getAllBookings() {
-		return parkingBookingRepository.findAll().stream()
-				.sorted(Comparator.comparing(ParkingBooking::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder())))
+	@Transactional(readOnly = true)
+	public List<Map<String, Object>> getAllBookings() {
+		List<Map<String, Object>> rows = new ArrayList<>();
+
+		// Legacy booking model
+		for (ParkingBooking booking : parkingBookingRepository.findAll()) {
+			Map<String, Object> row = new LinkedHashMap<>();
+			row.put("id", booking.getId());
+			row.put("ticketNumber", "LEG-" + booking.getId());
+			row.put("userName", booking.getUserName());
+			row.put("userEmail", booking.getUserEmail() == null ? "" : booking.getUserEmail());
+			row.put("slot", booking.getSlot() == null ? "N/A" : booking.getSlot());
+			row.put("duration", booking.getDuration() == null ? 0 : booking.getDuration());
+			row.put("amount", booking.getAmount() == null ? BigDecimal.ZERO : booking.getAmount());
+			row.put("paid", Boolean.TRUE.equals(booking.getPaid()));
+			row.put("status", Boolean.TRUE.equals(booking.getPaid()) ? "PAID" : "PENDING");
+			row.put("paymentMethod", booking.getPaymentMethod() == null ? "N/A" : booking.getPaymentMethod());
+			row.put("vehicleNumber", "N/A");
+			row.put("validUntil", booking.getValidUntil());
+			row.put("createdAt", booking.getCreatedAt());
+			row.put("updatedAt", booking.getUpdatedAt());
+			row.put("source", "legacy");
+			rows.add(row);
+		}
+
+		// Modern booking/payment model
+		List<Booking> modernBookings = bookingRepository.findAll();
+		for (Booking booking : modernBookings) {
+			List<Payment> bookingPayments = paymentRepository.findByBookingBookingId(booking.getBookingId());
+			Payment latestPayment = bookingPayments.stream()
+					.sorted(Comparator.comparing(Payment::getUpdatedAt, Comparator.nullsLast(Comparator.reverseOrder())))
+					.findFirst()
+					.orElse(null);
+
+			LocalDateTime start = booking.getStartTime();
+			LocalDateTime end = booking.getEndTime();
+			int durationHours = 0;
+			if (start != null && end != null) {
+				durationHours = (int) Math.max(1, ChronoUnit.HOURS.between(start, end));
+			}
+
+			Map<String, Object> row = new LinkedHashMap<>();
+			row.put("id", booking.getBookingId());
+			row.put("ticketNumber",
+					booking.getTicketNumber() == null ? ("PKE-" + booking.getBookingId()) : booking.getTicketNumber());
+			row.put("userName",
+					booking.getUser() != null && booking.getUser().getFullName() != null ? booking.getUser().getFullName()
+							: "N/A");
+			row.put("userEmail",
+					booking.getUser() != null && booking.getUser().getEmail() != null ? booking.getUser().getEmail() : "");
+			row.put("slot",
+					booking.getParkingSpot() != null && booking.getParkingSpot().getSpotLabel() != null
+							? booking.getParkingSpot().getSpotLabel()
+							: "N/A");
+			row.put("duration", durationHours);
+			row.put("amount", booking.getTotalAmount() == null ? 0 : booking.getTotalAmount());
+			row.put("paid",
+					"PAID".equalsIgnoreCase(booking.getStatus()) || "CHECKED_IN".equalsIgnoreCase(booking.getStatus())
+							|| "COMPLETED".equalsIgnoreCase(booking.getStatus()) || "OVERSTAY".equalsIgnoreCase(booking.getStatus())
+							|| "OVERSTAY_PAID".equalsIgnoreCase(booking.getStatus()));
+			row.put("status", booking.getStatus() == null ? "UNKNOWN" : booking.getStatus());
+			row.put("paymentMethod",
+					latestPayment != null && latestPayment.getPaymentMethod() != null ? latestPayment.getPaymentMethod() : "N/A");
+			row.put("vehicleNumber", booking.getVehicleNumber() == null ? "N/A" : booking.getVehicleNumber());
+			row.put("validUntil", booking.getEndTime());
+			row.put("createdAt", booking.getCreatedAt());
+			row.put("updatedAt", booking.getUpdatedAt());
+			row.put("source", "modern");
+			rows.add(row);
+		}
+
+		return rows.stream()
+				.sorted(Comparator.comparing(
+						row -> (LocalDateTime) row.get("createdAt"),
+						Comparator.nullsLast(Comparator.reverseOrder())))
 				.toList();
 	}
 
@@ -231,5 +361,25 @@ public class AdminManagementServiceImpl implements AdminManagementService {
 			throw new RuntimeException("Status must be available or occupied");
 		}
 		return normalized;
+	}
+
+	private void syncParkingSpot(ParkingSlot slot, String previousNumber) {
+		ParkingSpot spot = null;
+		if (previousNumber != null && !previousNumber.isBlank() && !previousNumber.equalsIgnoreCase(slot.getNumber())) {
+			spot = parkingSpotRepository.findBySpotLabel(previousNumber).orElse(null);
+		}
+		if (spot == null) {
+			spot = parkingSpotRepository.findBySpotLabel(slot.getNumber()).orElseGet(ParkingSpot::new);
+		}
+
+		spot.setSpotLabel(slot.getNumber());
+		spot.setZone(slot.getFloor());
+		spot.setIsOccupied("occupied".equalsIgnoreCase(slot.getStatus()));
+		spot.setPricePerHour(slot.getPricePerHour() != null ? slot.getPricePerHour().doubleValue() : 75.0);
+		if (spot.getNavigationPath() == null || spot.getNavigationPath().isBlank()) {
+			spot.setNavigationPath("Follow signs to " + slot.getNumber());
+		}
+
+		parkingSpotRepository.save(spot);
 	}
 }

@@ -1,245 +1,172 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
-import { Navbar, Footer, LiveCounter, LoadingSpinner } from '../components';
+import { getMyBookings, getMyActiveBookings, payOverstayByUser } from '../utils/api';
+import { Navbar, LoadingSpinner } from '../components';
 import BottomNav from '../components/BottomNav';
-import { getMyBookings } from '../utils/api';
+
+const statusColor = (status) => {
+  const map = {
+    ACTIVE: '#f59e0b', PAID: '#3b82f6', CHECKED_IN: '#8b5cf6',
+    OVERSTAY: '#ef4444', OVERSTAY_PAID: '#f97316', COMPLETED: '#22c55e', CANCELLED: '#6b7280',
+  };
+  return map[status] || '#94a3b8';
+};
+
+const shouldShowQr = (status) => {
+  const normalized = (status || '').toUpperCase();
+  return ['ACTIVE', 'PAID', 'CHECKED_IN', 'OVERSTAY'].includes(normalized);
+};
+
+const DASHBOARD_VISIBLE_STATUSES = ['ACTIVE', 'PAID', 'CHECKED_IN', 'OVERSTAY'];
+
+const isDashboardVisibleStatus = (status) => {
+  const normalized = (status || '').toUpperCase();
+  return DASHBOARD_VISIBLE_STATUSES.includes(normalized);
+};
 
 const DashboardPage = () => {
-  const { user } = useApp();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
+  const { user } = useApp();
+  const [bookings, setBookings] = useState([]);
   const [activeBookings, setActiveBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [payingOverstay, setPayingOverstay] = useState(false);
 
-  useEffect(() => {
-    loadBookings();
-  }, []);
+  useEffect(() => { loadData(); }, []);
 
-  const loadBookings = async () => {
+  const loadData = async () => {
     try {
-      // Fetch all user bookings from API
-      const res = await getMyBookings();
-      const extractBookings = (payload) => {
-        if (Array.isArray(payload)) return payload;
-        if (!payload || typeof payload !== 'object') return [];
-
-        if (Array.isArray(payload.data)) return payload.data;
-        if (Array.isArray(payload.bookings)) return payload.bookings;
-        if (Array.isArray(payload.content)) return payload.content;
-
-        // Generic fallback for unexpected wrappers
-        for (const key of Object.keys(payload)) {
-          if (Array.isArray(payload[key])) return payload[key];
-        }
-
-        return [];
-      };
-
-      const allBookings = extractBookings(res.data);
-      
-      // Show only current booking for these statuses
-      const activeStatuses = ['ACTIVE', 'PAID', 'CHECKED_IN'];
-      const activeOnes = allBookings.filter(
-        (b) => b && activeStatuses.includes((b.status || '').toString().trim().toUpperCase())
-      );
-
-      // Pick latest booking by the best available timestamp
-      const sorted = [...activeOnes].sort((a, b) => {
-        const aTime = new Date(
-          a.startTime || a.createdAt || a.bookingTime || a.endTime || 0
-        ).getTime();
-        const bTime = new Date(
-          b.startTime || b.createdAt || b.bookingTime || b.endTime || 0
-        ).getTime();
-        return aTime - bTime;
-      });
-      
-      // Keep all active bookings and show newest first
-      setActiveBookings(sorted.reverse());
-    } catch (err) {
-      console.error('Failed to load bookings:', err);
+      const [allRes, activeRes] = await Promise.all([getMyBookings(), getMyActiveBookings()]);
+      const all = (allRes.data || []).filter((b) => isDashboardVisibleStatus(b?.status));
+      const active = (activeRes.data || []).filter((b) => isDashboardVisibleStatus(b?.status));
+      setBookings(all);
+      setActiveBookings(active);
+    } catch {
+      setBookings([]);
       setActiveBookings([]);
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
-  if (loading) {
-    return <LoadingSpinner message="Loading dashboard..." />;
-  }
-
-  // Format date/time for display
-  const formatTime = (dateStr) => {
-    if (!dateStr) return '--';
-    const d = new Date(dateStr);
-    return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+  const handlePayOverstay = async (booking) => {
+    if (!booking?.ticketNumber) return;
+    if (!window.confirm(`Pay overstay fee of ₹${booking.overstayFee || 0}?`)) return;
+    setPayingOverstay(true);
+    try {
+      await payOverstayByUser(booking.ticketNumber);
+      alert('Overstay fee paid! A new ticket has been sent to your email.');
+      loadData();
+    } catch { alert('Failed to pay overstay fee'); }
+    finally { setPayingOverstay(false); }
   };
 
-  const formatDate = (dateStr) => {
-    if (!dateStr) return '--';
-    const d = new Date(dateStr);
-    return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
-  };
-
-  // Get status badge color
-  const getStatusBadge = (status) => {
-    const s = status?.toUpperCase();
-    if (s === 'ACTIVE' || s === 'PAID' || s === 'CHECKED_IN') return 'status-active';
-    if (s === 'COMPLETED') return 'status-completed';
-    if (s === 'CANCELLED') return 'status-cancelled';
-    return 'status-pending';
-  };
-
-  const getStatusLabel = (status) => {
-    const s = status?.toUpperCase();
-    if (s === 'ACTIVE') return 'Active';
-    if (s === 'PAID') return 'Ready to Enter';
-    if (s === 'CHECKED_IN') return 'Parked';
-    if (s === 'COMPLETED') return 'Completed';
-    if (s === 'CANCELLED') return 'Cancelled';
-    return status || 'Pending';
-  };
+  if (loading) return <LoadingSpinner message="Loading dashboard..." />;
 
   return (
     <div className="mobile-page-wrapper">
       <Navbar />
-
-      <div className="main-content mobile-content flex-grow-1 py-4">
-        <div className="container">
-          {/* Welcome Header */}
-          <div className="mb-4 fade-in">
-            <h2 className="fw-bold" style={{ color: '#2C3E50' }}>
-              Welcome, {user?.name?.split(' ')[0]} 👋
-            </h2>
-            <p className="text-muted"> City Mall Parking Dashboard</p>
+      <div className="mobile-content fade-in">
+        <div className="container py-3">
+          {/* Welcome */}
+          <div className="mb-4">
+            <h5 className="fw-bold mb-1">
+              👋 Welcome, {user?.fullName || user?.name || 'User'}!
+            </h5>
+            <p className="text-muted small mb-0">Here's your parking overview</p>
           </div>
 
-          {/* Live Counter Card */}
-          <div className="mb-4 fade-in">
-            <div className="live-counter">
-              <LiveCounter available={325} total={500} compact />
-            </div>
-          </div>
+          {/* Active Session Cards */}
+          {activeBookings.map((activeBooking) => (
+            <div
+              key={activeBooking.bookingId || activeBooking.id}
+              className="card mb-4"
+              style={{ borderLeft: `4px solid ${statusColor(activeBooking.status)}` }}
+            >
+              <div className="card-body p-3">
+                <div className="d-flex justify-content-between align-items-start mb-2">
+                  <h6 className="fw-bold mb-0">
+                    <i className="bi bi-ticket-perforated me-2"></i>Active Session
+                  </h6>
+                  <span className="badge" style={{ backgroundColor: statusColor(activeBooking.status), color: '#fff' }}>
+                    {activeBooking.status}
+                  </span>
+                </div>
 
-          {/* Current Booking Cards - show all active user tickets */}
-          {activeBookings.length > 0 ? (
-            <>
-              {activeBookings.map((activeBooking) => (
-                <div key={activeBooking.bookingId || activeBooking.id} className="card mb-4 fade-in">
-                  <div className="card-header d-flex justify-content-between align-items-center">
-                    <span>
-                      <i className="bi bi-ticket-perforated me-2"></i>
-                      Current Booking
-                    </span>
-                    <span className={`status-badge ${getStatusBadge(activeBooking.status)}`}>
-                      {getStatusLabel(activeBooking.status)}
-                    </span>
+                <div className="row g-2 mb-2">
+                  <div className="col-6">
+                    <small className="text-muted d-block">Spot</small>
+                    <span className="fw-bold">{activeBooking.spotLabel || activeBooking.slot || 'N/A'}</span>
                   </div>
-                  <div className="card-body">
-                    <div className="row g-3">
-                      <div className="col-6">
-                        <p className="text-muted small mb-1">Slot Number</p>
-                        <p className="fw-bold mb-0 fs-4" style={{ color: '#00C4B4' }}>
-                          {activeBooking.spotLabel || activeBooking.slot || 'N/A'}
-                        </p>
-                      </div>
-                      <div className="col-6">
-                        <p className="text-muted small mb-1">Duration</p>
-                        <p className="fw-bold mb-0">{activeBooking.duration || '--'} Hours</p>
-                      </div>
-                      <div className="col-6">
-                        <p className="text-muted small mb-1">Valid Until</p>
-                        <p className="fw-bold mb-0">
-                          {formatDate(activeBooking.endTime)} {formatTime(activeBooking.endTime)}
-                        </p>
-                      </div>
-                      <div className="col-6">
-                        <p className="text-muted small mb-1">Amount Paid</p>
-                        <p className="fw-bold mb-0">₹{activeBooking.totalAmount || activeBooking.amount || 0}</p>
-                      </div>
-                    </div>
-                    <hr />
-                    <button
-                      className="btn btn-primary w-100"
-                      onClick={() => navigate(`/ticket/${activeBooking.bookingId || activeBooking.id}`)}
-                    >
-                      <i className="bi bi-qr-code me-2"></i>
-                      View Ticket
+                  <div className="col-6">
+                    <small className="text-muted d-block">Vehicle</small>
+                    <span className="fw-bold">{activeBooking.vehicleNumber || 'N/A'}</span>
+                  </div>
+                  <div className="col-6">
+                    <small className="text-muted d-block">Duration</small>
+                    <span className="fw-bold">{activeBooking.durationHours || activeBooking.duration || 0}h</span>
+                  </div>
+                  <div className="col-6">
+                    <small className="text-muted d-block">Amount</small>
+                    <span className="fw-bold">₹{activeBooking.totalAmount || activeBooking.amount || 0}</span>
+                  </div>
+                </div>
+
+                {activeBooking.endTime && (
+                  <div className="small text-muted mb-2">
+                    <i className="bi bi-clock me-1"></i>Valid until: {new Date(activeBooking.endTime).toLocaleString()}
+                  </div>
+                )}
+
+                {/* Overstay Payment - User Side (Feature #8) */}
+                {activeBooking.status === 'OVERSTAY' && (
+                  <div className="alert alert-danger py-2 mb-2">
+                    <i className="bi bi-exclamation-triangle-fill me-2"></i>
+                    <strong>Overstay detected!</strong> Fee: ₹{activeBooking.overstayFee || 0}
+                    <button className="btn btn-danger btn-sm d-block mt-2 w-100"
+                      onClick={() => handlePayOverstay(activeBooking)} disabled={payingOverstay}>
+                      {payingOverstay ? <><span className="spinner-border spinner-border-sm me-1"></span>Processing...</>
+                        : <><i className="bi bi-credit-card me-1"></i>Pay Overstay Fee</>}
                     </button>
                   </div>
+                )}
+
+                <div className="d-flex gap-2">
+                  {shouldShowQr(activeBooking.status) && (
+                    <button className="btn btn-sm btn-outline-primary flex-fill"
+                      onClick={() => navigate(`/ticket/${activeBooking.bookingId}`)}>
+                      <i className="bi bi-ticket-perforated me-1"></i>Show Ticket
+                    </button>
+                  )}
+                  {(activeBooking.status === 'CHECKED_IN' || activeBooking.status === 'PAID') && (
+                    <button className="btn btn-sm btn-primary flex-fill"
+                      onClick={() => navigate('/active-ticket')}>
+                      <i className="bi bi-geo-alt me-1"></i>Track
+                    </button>
+                  )}
                 </div>
-              ))}
-            </>
-          ) : (
-            <div className="card mb-4 fade-in">
-              <div className="card-body text-center py-4">
-                <i className="bi bi-car-front text-muted" style={{ fontSize: '3rem' }}></i>
-                <h5 className="mt-3 mb-2">No Active Booking</h5>
-                <p className="text-muted mb-3">You don't have any active parking sessions</p>
-                <button
-                  className="btn btn-primary"
-                  onClick={() => navigate('/booking')}
-                >
-                  <i className="bi bi-plus-circle me-2"></i>
-                  Book a Spot
-                </button>
               </div>
             </div>
-          )}
+          ))}
+
+          
 
           {/* Quick Actions */}
-          <div className="row g-3 fade-in">
-            <div className="col-12 col-md-6">
-              <div
-                className="card h-100 quick-action-card"
-                onClick={() => navigate('/book')}
-              >
-                <div className="card-body text-center py-4">
-                  <div
-                    className="quick-action-icon"
-                    style={{ backgroundColor: 'rgba(0, 196, 180, 0.15)' }}
-                  >
-                    <i
-                      className="bi bi-plus-circle"
-                      style={{ fontSize: '2rem', color: '#00C4B4' }}
-                    ></i>
-                  </div>
-                  <h5 className="fw-bold mb-1" style={{ color: '#2C3E50' }}>
-                    Book New Slot
-                  </h5>
-                  <p className="text-muted small mb-0">Reserve parking space</p>
-                </div>
-              </div>
+          <div className="row g-3">
+            <div className="col-6">
+              <button className="btn btn-primary w-100 py-3" onClick={() => navigate('/book')}>
+                <i className="bi bi-plus-circle d-block mb-1" style={{ fontSize: '1.5rem' }}></i>
+                Book Spot
+              </button>
             </div>
-
-            <div className="col-12 col-md-6">
-              <div
-                className="card h-100 quick-action-card"
-                onClick={() => navigate('/active-ticket')}
-              >
-                <div className="card-body text-center py-4">
-                  <div
-                    className="quick-action-icon"
-                    style={{ backgroundColor: 'rgba(39, 174, 96, 0.15)' }}
-                  >
-                    <i
-                      className="bi bi-ticket-perforated"
-                      style={{ fontSize: '2rem', color: '#27AE60' }}
-                    ></i>
-                  </div>
-                  <h5 className="fw-bold mb-1" style={{ color: '#2C3E50' }}>
-                    My Tickets
-                  </h5>
-                  <p className="text-muted small mb-0">View all parking tickets</p>
-                </div>
-              </div>
+            <div className="col-6">
+              <button className="btn btn-outline-primary w-100 py-3" onClick={() => navigate('/chatbot')}>
+                <i className="bi bi-chat-dots d-block mb-1" style={{ fontSize: '1.5rem' }}></i>
+                ParkBot
+              </button>
             </div>
           </div>
-
         </div>
       </div>
-
-      <Footer />
       <BottomNav />
     </div>
   );

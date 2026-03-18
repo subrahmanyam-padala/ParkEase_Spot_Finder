@@ -49,7 +49,13 @@ public class AuthController {
             String token = jwtUtil.generateToken(authRequest.getUsername());
             String role = user != null && user.getRole() != null ? user.getRole() : "USER";
 
-            return ResponseEntity.ok(new AuthResponse(token, authRequest.getUsername(), role, "Login successful"));
+            AuthResponse response = new AuthResponse(token, authRequest.getUsername(), role, "Login successful");
+            if (user != null) {
+                response.setFullName(user.getFullName());
+                response.setEmail(user.getEmail());
+                response.setUserId(user.getUserId());
+            }
+            return ResponseEntity.ok(response);
         } catch (BadCredentialsException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(new AuthResponse(null, null, "Invalid username or password"));
@@ -75,6 +81,38 @@ public class AuthController {
     /**
      * Step 2: Verify OTP and register user if valid
      */
+    /**
+     * Reset password: verify OTP and update password
+     */
+    @PostMapping("/reset-password")
+    public ResponseEntity<Map<String, String>> resetPassword(@RequestBody Map<String, String> payload) {
+        String email = payload.get("email");
+        String otp = payload.get("otp");
+        String newPassword = payload.get("password");
+
+        if (email == null || otp == null || newPassword == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("message", "Email, OTP and new password are required"));
+        }
+
+        boolean isValid = otpService.verifyOtp(email, otp);
+        if (!isValid) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("message", "Invalid or expired OTP"));
+        }
+
+        Users user = usersService.findByEmail(email);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", "User not found with this email"));
+        }
+
+        usersService.updatePassword(user, newPassword);
+        otpService.clearOtp(email);
+
+        return ResponseEntity.ok(Map.of("message", "Password reset successfully"));
+    }
+
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> verifyOtpAndRegister(@Valid @RequestBody OtpVerifyRequest request) {
         // Verify OTP first

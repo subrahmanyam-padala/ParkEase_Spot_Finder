@@ -420,6 +420,45 @@
   font-size: 1.5rem;
 }
 
+/* Chart data tables */
+.admin-dashboard-theme .chart-table-wrap {
+  margin-top: 18px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.admin-dashboard-theme .chart-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.admin-dashboard-theme .chart-table th {
+  background: #f8fafc;
+  color: #334155;
+  text-align: left;
+  font-weight: 700;
+  padding: 10px 12px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.admin-dashboard-theme .chart-table td {
+  color: #0f172a;
+  padding: 10px 12px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.admin-dashboard-theme .chart-table tr:last-child td {
+  border-bottom: none;
+}
+
+.admin-dashboard-theme .chart-table .empty-cell {
+  color: #64748b;
+  text-align: center;
+}
+
 /* ─── Quick Actions Grid ─────────────────────────────────────────────────── */
 .quick-actions-grid {
   display: grid;
