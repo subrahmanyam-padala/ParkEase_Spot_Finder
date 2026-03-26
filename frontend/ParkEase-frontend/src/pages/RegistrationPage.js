@@ -1,6 +1,6 @@
- import React, { useState } from "react";
+﻿ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import apiClient from "../services/apiClient";
 import carImage from "../images/image2.avif";
 import "./LoginPage.css"; // reuse same CSS
 
@@ -38,8 +38,8 @@ function RegistrationPage() {
     try {
       setLoading(true);
 
-      const response = await axios.post(
-        "http://localhost:8080/api/auth/send-otp",
+      const response = await apiClient.post(
+        "/api/auth/send-otp",
         { email: formData.email }
       );
 
@@ -72,18 +72,16 @@ function RegistrationPage() {
     try {
       setLoading(true);
 
-      const response = await axios.post(
-        "http://localhost:8080/api/auth/register",
+      const response = await apiClient.post(
+        "/api/auth/register",
         formData
       );
 
       setIsSuccess(true);
       setMessage(response.data.message);
 
-      localStorage.setItem("token", response.data.token);
-
       setTimeout(() => {
-        navigate("/dashboard");
+        navigate("/login");
       }, 1000);
 
     } catch (error) {
@@ -253,3 +251,4 @@ function RegistrationPage() {
 }
 
 export default RegistrationPage;
+

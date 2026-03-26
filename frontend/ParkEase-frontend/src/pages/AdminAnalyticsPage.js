@@ -1,7 +1,9 @@
-import React from 'react';
+﻿import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
-import { Navbar, Footer } from '../components';
+import { Footer, Navbar, LoadingSpinner, ErrorAlert } from '../components';
+import { getApiErrorMessage } from '../services/apiClient';
+import { getCurrentOccupancy, getSurgeStatus } from '../services/parkeaseApi';
 
 const hourlyTraffic = [
   { hour: '08:00', occupancy: 42, entries: 36, exits: 12 },
@@ -11,12 +13,6 @@ const hourlyTraffic = [
   { hour: '16:00', occupancy: 72, entries: 58, exits: 51 },
   { hour: '18:00', occupancy: 64, entries: 49, exits: 62 },
   { hour: '20:00', occupancy: 51, entries: 31, exits: 57 },
-];
-
-const floorMetrics = [
-  { floor: 'Ground', total: 200, used: 148 },
-  { floor: 'Level 1', total: 180, used: 129 },
-  { floor: 'Level 2', total: 120, used: 72 },
 ];
 
 const paymentSplit = [
@@ -29,14 +25,58 @@ const AdminAnalyticsPage = () => {
   const { user, bookings } = useApp();
   const navigate = useNavigate();
 
-  const isAdmin = user?.role === 'admin';
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [occupancy, setOccupancy] = useState(null);
+  const [surgeStatus, setSurgeStatus] = useState(null);
 
-  const totalRevenue = bookings.reduce((sum, booking) => sum + (booking.paid ? booking.amount : 0), 0);
-  const activeTickets = bookings.filter((booking) => booking.paid).length;
+  const isAdmin = String(user?.role || '').toLowerCase() === 'admin';
+
+  useEffect(() => {
+    const loadAnalytics = async () => {
+      if (!isAdmin) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const [occupancyData, surgeData] = await Promise.all([
+          getCurrentOccupancy(),
+          getSurgeStatus(),
+        ]);
+
+        setOccupancy(occupancyData);
+        setSurgeStatus(surgeData);
+      } catch (apiError) {
+        setError(getApiErrorMessage(apiError, 'Failed to load admin analytics'));
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadAnalytics();
+  }, [isAdmin]);
+
+  const totalRevenue = useMemo(
+    () => bookings.reduce((sum, booking) => sum + (booking.paid ? booking.amount : 0), 0),
+    [bookings]
+  );
+
+  const activeTickets = occupancy?.occupiedSpots ?? bookings.filter((booking) => booking.paid).length;
+
   const avgStay =
     bookings.length > 0
       ? (bookings.reduce((sum, booking) => sum + (booking.duration || 0), 0) / bookings.length).toFixed(1)
       : '0.0';
+
+  const floorMetrics = [
+    {
+      floor: 'Main Parking',
+      total: occupancy?.totalSpots ?? 0,
+      used: occupancy?.occupiedSpots ?? 0,
+    },
+  ];
 
   if (!isAdmin) {
     return (
@@ -46,9 +86,7 @@ const AdminAnalyticsPage = () => {
           <div className="card p-4 text-center" style={{ maxWidth: '520px', width: '100%' }}>
             <i className="bi bi-shield-lock" style={{ fontSize: '3rem', color: '#E74C3C' }}></i>
             <h4 className="mt-3 mb-2" style={{ color: '#2C3E50' }}>Admin Access Required</h4>
-            <p className="text-muted mb-4">
-              This dashboard is restricted to admin users only.
-            </p>
+            <p className="text-muted mb-4">This dashboard is restricted to admin users only.</p>
             <button className="btn btn-primary" onClick={() => navigate('/dashboard')}>
               <i className="bi bi-arrow-left me-2"></i>
               Back to Dashboard
@@ -58,6 +96,10 @@ const AdminAnalyticsPage = () => {
         <Footer />
       </div>
     );
+  }
+
+  if (loading) {
+    return <LoadingSpinner message="Loading admin analytics..." />;
   }
 
   return (
@@ -71,8 +113,10 @@ const AdminAnalyticsPage = () => {
               <i className="bi bi-bar-chart-line-fill me-2" style={{ color: '#00C4B4' }}></i>
               Admin Analytics Dashboard
             </h2>
-            <p className="text-muted mb-0">Operational metrics for parking traffic, utilization, and revenue.</p>
+            <p className="text-muted mb-0">Operational metrics from backend occupancy and pricing services.</p>
           </div>
+
+          {error && <ErrorAlert message={error} onDismiss={() => setError('')} />}
 
           <div className="row g-3 mb-4 fade-in">
             <div className="col-6 col-md-3">
@@ -83,7 +127,7 @@ const AdminAnalyticsPage = () => {
             </div>
             <div className="col-6 col-md-3">
               <div className="analytics-kpi">
-                <small className="text-muted d-block">Active Tickets</small>
+                <small className="text-muted d-block">Occupied Spots</small>
                 <h4 className="mb-0">{activeTickets}</h4>
               </div>
             </div>
@@ -95,9 +139,23 @@ const AdminAnalyticsPage = () => {
             </div>
             <div className="col-6 col-md-3">
               <div className="analytics-kpi">
-                <small className="text-muted d-block">Peak Occupancy</small>
-                <h4 className="mb-0">88%</h4>
+                <small className="text-muted d-block">Occupancy</small>
+                <h4 className="mb-0">{occupancy?.occupancyPercent ?? 0}%</h4>
               </div>
+            </div>
+          </div>
+
+          <div className="card mb-4 fade-in">
+            <div className="card-body d-flex justify-content-between align-items-center flex-wrap gap-2">
+              <div>
+                <h6 className="mb-1">Dynamic Pricing Status</h6>
+                <small className="text-muted">
+                  Threshold: {surgeStatus?.surgeThreshold ?? 'N/A'}% | Multiplier: {surgeStatus?.surgeMultiplier ?? 'N/A'}x
+                </small>
+              </div>
+              <span className={`status-badge ${surgeStatus?.surgeActive ? 'status-pending' : 'status-active'}`}>
+                {surgeStatus?.surgeActive ? 'Surge Active' : 'Normal Pricing'}
+              </span>
             </div>
           </div>
 
@@ -184,7 +242,7 @@ const AdminAnalyticsPage = () => {
                 </div>
                 <div className="card-body">
                   {floorMetrics.map((floor) => {
-                    const usedPercent = Math.round((floor.used / floor.total) * 100);
+                    const usedPercent = floor.total > 0 ? Math.round((floor.used / floor.total) * 100) : 0;
                     return (
                       <div key={floor.floor} className="mb-3">
                         <div className="d-flex justify-content-between mb-1">

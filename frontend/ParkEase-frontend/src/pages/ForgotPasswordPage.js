@@ -1,6 +1,6 @@
- import React, { useState } from "react";
+﻿ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import apiClient from "../services/apiClient";
 import parkingBg from "../images/image3.jpg";
 
 function ForgotPasswordPage() {
@@ -34,8 +34,8 @@ function ForgotPasswordPage() {
 
     try {
       setLoading(true);
-      const response = await axios.post(
-        "http://localhost:8080/api/auth/send-otp",
+      const response = await apiClient.post(
+        "/api/auth/send-otp",
         { email: formData.email }
       );
 
@@ -68,8 +68,8 @@ function ForgotPasswordPage() {
     try {
       setLoading(true);
 
-      const response = await axios.post(
-        "http://localhost:8080/api/auth/reset-password",
+      const response = await apiClient.post(
+        "/api/auth/reset-password",
         {
           email: formData.email,
           otp: formData.otp,
