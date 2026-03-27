@@ -6,12 +6,10 @@ import com.parkeasy.ParkEase_backend.dto.ScanResponseDTO;
 import com.parkeasy.ParkEase_backend.entity.Booking;
 import com.parkeasy.ParkEase_backend.entity.ParkingSlot;
 import com.parkeasy.ParkEase_backend.entity.Payment;
-import com.parkeasy.ParkEase_backend.entity.PricingConfig;
 import com.parkeasy.ParkEase_backend.repository.BookingRepository;
 import com.parkeasy.ParkEase_backend.repository.ParkingSpotRepository;
 import com.parkeasy.ParkEase_backend.repository.ParkingSlotRepository;
 import com.parkeasy.ParkEase_backend.repository.PaymentRepository;
-import com.parkeasy.ParkEase_backend.repository.PricingConfigRepository;
 import com.parkeasy.ParkEase_backend.service.ScannerService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,27 +19,25 @@ import java.time.temporal.ChronoUnit;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 
 @Service
 public class ScannerServiceImpl implements ScannerService {
+	private static final double DEFAULT_SPOT_PRICE_PER_HOUR = 75.0;
+	private static final double OVERSTAY_MULTIPLIER = 1.5;
 
 	private final BookingRepository bookingRepository;
 	private final ParkingSpotRepository parkingSpotRepository;
 	private final ParkingSlotRepository parkingSlotRepository;
 	private final PaymentRepository paymentRepository;
-	private final PricingConfigRepository pricingConfigRepository;
 	private final ObjectMapper objectMapper;
 
 	public ScannerServiceImpl(BookingRepository bookingRepository, ParkingSpotRepository parkingSpotRepository,
 			ParkingSlotRepository parkingSlotRepository, PaymentRepository paymentRepository,
-			PricingConfigRepository pricingConfigRepository,
 			ObjectMapper objectMapper) {
 		this.bookingRepository = bookingRepository;
 		this.parkingSpotRepository = parkingSpotRepository;
 		this.parkingSlotRepository = parkingSlotRepository;
 		this.paymentRepository = paymentRepository;
-		this.pricingConfigRepository = pricingConfigRepository;
 		this.objectMapper = objectMapper;
 	}
 
@@ -146,8 +142,11 @@ public class ScannerServiceImpl implements ScannerService {
 			if (overstayHours < 1)
 				overstayHours = 1;
 
-			double basePricePerHour = getBasePricePerHour();
-			double overstayFee = overstayHours * basePricePerHour * 2; // 2x rate
+			double spotPricePerHour = booking.getParkingSpot().getPricePerHour() != null
+					&& booking.getParkingSpot().getPricePerHour() > 0
+							? booking.getParkingSpot().getPricePerHour()
+							: DEFAULT_SPOT_PRICE_PER_HOUR;
+			double overstayFee = overstayHours * spotPricePerHour * OVERSTAY_MULTIPLIER;
 
 			booking.setStatus("OVERSTAY");
 			booking.setOverstayFee(overstayFee);
@@ -164,25 +163,34 @@ public class ScannerServiceImpl implements ScannerService {
 			data.put("exitTime", now);
 			data.put("overstay", true);
 			data.put("overstayHours", overstayHours);
-			data.put("basePricePerHour", basePricePerHour);
+			data.put("spotPricePerHour", spotPricePerHour);
+			data.put("overstayMultiplier", OVERSTAY_MULTIPLIER);
 			data.put("overstayFee", overstayFee);
 			data.put("totalOriginal", booking.getTotalAmount());
 			data.put("totalDue", overstayFee);
 			data.put("status", "OVERSTAY");
 
 			return ScanResponseDTO.success("EXIT_OVERSTAY",
-					String.format("Vehicle %s has overstayed by %d hour(s). Overstay charge: ₹%.2f (2× rate)",
-							booking.getVehicleNumber(), overstayHours, overstayFee),
+					String.format(
+							"Vehicle %s has overstayed by %d hour(s). Overstay charge: ₹%.2f (₹%.2f/hr × %.1fx).",
+							booking.getVehicleNumber(), overstayHours, overstayFee, spotPricePerHour, OVERSTAY_MULTIPLIER),
 					data);
 		}
 
 		// ─── OVERSTAY — waiting for payment
 		if ("OVERSTAY".equals(booking.getStatus())) {
+			double spotPricePerHour = booking.getParkingSpot().getPricePerHour() != null
+					&& booking.getParkingSpot().getPricePerHour() > 0
+							? booking.getParkingSpot().getPricePerHour()
+							: DEFAULT_SPOT_PRICE_PER_HOUR;
+
 			Map<String, Object> data = new LinkedHashMap<>();
 			data.put("ticketNumber", booking.getTicketNumber());
 			data.put("vehicleNumber", booking.getVehicleNumber());
 			data.put("userName", userName);
 			data.put("userEmail", userEmail);
+			data.put("spotPricePerHour", spotPricePerHour);
+			data.put("overstayMultiplier", OVERSTAY_MULTIPLIER);
 			data.put("overstayFee", booking.getOverstayFee() != null ? booking.getOverstayFee() : 0);
 			data.put("status", "OVERSTAY");
 
@@ -270,6 +278,12 @@ public class ScannerServiceImpl implements ScannerService {
 		Map<String, Object> data = new LinkedHashMap<>();
 		data.put("ticketNumber", booking.getTicketNumber());
 		data.put("vehicleNumber", booking.getVehicleNumber());
+		double spotPricePerHour = booking.getParkingSpot().getPricePerHour() != null
+				&& booking.getParkingSpot().getPricePerHour() > 0
+						? booking.getParkingSpot().getPricePerHour()
+						: DEFAULT_SPOT_PRICE_PER_HOUR;
+		data.put("spotPricePerHour", spotPricePerHour);
+		data.put("overstayMultiplier", OVERSTAY_MULTIPLIER);
 		data.put("overstayFee", overstayFee);
 		data.put("status", "OVERSTAY_PAID");
 
@@ -304,6 +318,12 @@ public class ScannerServiceImpl implements ScannerService {
 		data.put("baseFee", booking.getBaseFee());
 		data.put("surgeFee", booking.getSurgeFee());
 		data.put("totalAmount", booking.getTotalAmount());
+		double spotPricePerHour = booking.getParkingSpot().getPricePerHour() != null
+				&& booking.getParkingSpot().getPricePerHour() > 0
+						? booking.getParkingSpot().getPricePerHour()
+						: DEFAULT_SPOT_PRICE_PER_HOUR;
+		data.put("spotPricePerHour", spotPricePerHour);
+		data.put("overstayMultiplier", OVERSTAY_MULTIPLIER);
 		data.put("overstayFee", booking.getOverstayFee() != null ? booking.getOverstayFee() : 0);
 		data.put("status", booking.getStatus());
 
@@ -311,11 +331,6 @@ public class ScannerServiceImpl implements ScannerService {
 		dto.setSuccess(true);
 		dto.setData(data);
 		return dto;
-	}
-
-	private double getBasePricePerHour() {
-		return pricingConfigRepository.findAll().stream().reduce((a, b) -> b).map(PricingConfig::getBasePricePerHour)
-				.orElse(50.0);
 	}
 
 	private void syncLegacySlotStatus(String spotLabel, boolean occupied) {

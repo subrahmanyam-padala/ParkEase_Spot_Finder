@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getMyBookings, cancelBooking, payOverstayByUser } from '../utils/api';
+import { getMyBookings, cancelBooking } from '../utils/api';
 import { Navbar } from '../components';
 import BottomNav from '../components/BottomNav';
 
@@ -21,7 +21,7 @@ const statusColor = (status) => {
 
 const shouldShowQr = (status) => {
   const normalized = (status || '').toUpperCase();
-  return ['ACTIVE', 'PAID', 'CHECKED_IN', 'OVERSTAY'].includes(normalized);
+  return ['ACTIVE', 'PAID', 'CHECKED_IN', 'OVERSTAY_PAID'].includes(normalized);
 };
 
 const canTrack = (status) => {
@@ -29,11 +29,15 @@ const canTrack = (status) => {
   return ['ACTIVE', 'PAID', 'CHECKED_IN', 'OVERSTAY'].includes(normalized);
 };
 
+const canCancelBeforeEntry = (status) => {
+  const normalized = (status || '').toUpperCase();
+  return ['ACTIVE', 'PAID'].includes(normalized);
+};
+
 const MyBookingsPage = () => {
   const [bookings, setBookings] = useState([]);
   const [activeTab, setActiveTab] = useState('ALL');
   const [loading, setLoading] = useState(true);
-  const [payingOverstay, setPayingOverstay] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -52,28 +56,17 @@ const MyBookingsPage = () => {
   };
 
   const handleCancel = async (bookingId) => {
-    if (!window.confirm('Cancel this booking?')) return;
+    if (!window.confirm('Cancel this booking? Cancellation is allowed only before entry.')) return;
     try {
       await cancelBooking(bookingId);
       loadBookings();
-    } catch {
-      alert('Failed to cancel booking');
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to cancel booking');
     }
   };
 
-  const handlePayOverstay = async (booking) => {
-    if (!booking.ticketNumber) return;
-    if (!window.confirm(`Pay overstay fee of ₹${booking.overstayFee || 0}?`)) return;
-    setPayingOverstay(booking.bookingId || booking.id);
-    try {
-      await payOverstayByUser(booking.ticketNumber);
-      alert('Overstay fee paid! A new ticket has been sent to your email.');
-      loadBookings();
-    } catch {
-      alert('Failed to pay overstay fee');
-    } finally {
-      setPayingOverstay(null);
-    }
+  const handlePayOverstay = (booking) => {
+    navigate(`/ticket/${booking.bookingId || booking.id}`);
   };
 
   const filtered = activeTab === 'ALL' ? bookings : bookings.filter((b) => b.status === activeTab);
@@ -147,18 +140,24 @@ const MyBookingsPage = () => {
                         Valid until: {new Date(booking.endTime).toLocaleString()}
                       </div>
                     )}
+                    {booking.status === 'CANCELLED' && booking.refundStatus === 'REQUESTED' && (
+                      <div className="small text-warning mb-2">
+                        <i className="bi bi-arrow-counterclockwise me-1"></i>
+                        Refund requested. Admin will process payment reversal.
+                      </div>
+                    )}
 
                     {/* Overstay Alert + Payment (Feature #8) */}
                     {booking.status === 'OVERSTAY' && (
                       <div className="alert alert-danger py-2 mb-2">
                         <i className="bi bi-exclamation-triangle-fill me-1"></i>
                         <strong>Overstay!</strong> Fee: ₹{booking.overstayFee || 0}
+                        <div className="small mt-1">
+                          Rate: ₹{booking.spotPricePerHour || 75}/hr x {booking.overstayMultiplier || 1.5}x
+                        </div>
                         <button className="btn btn-danger btn-sm d-block mt-2 w-100"
-                          onClick={() => handlePayOverstay(booking)}
-                          disabled={payingOverstay === (booking.bookingId || booking.id)}>
-                          {payingOverstay === (booking.bookingId || booking.id)
-                            ? <><span className="spinner-border spinner-border-sm me-1"></span>Processing...</>
-                            : <><i className="bi bi-credit-card me-1"></i>Pay Overstay Fee</>}
+                          onClick={() => handlePayOverstay(booking)}>
+                          <><i className="bi bi-credit-card me-1"></i>Pay Overstay Fee</>
                         </button>
                       </div>
                     )}
@@ -172,19 +171,21 @@ const MyBookingsPage = () => {
                           <i className="bi bi-ticket-perforated me-1"></i>Show Ticket
                         </button>
                       )}
-                      {booking.status === 'ACTIVE' && (
+                      {canCancelBeforeEntry(booking.status) && (
                         <>
-                          <button
-                            className="btn btn-sm btn-primary flex-fill"
-                            onClick={() => navigate(`/payment/${booking.bookingId || booking.id}`)}
-                          >
-                            <i className="bi bi-credit-card me-1"></i>Pay
-                          </button>
+                          {booking.status === 'ACTIVE' && (
+                            <button
+                              className="btn btn-sm btn-primary flex-fill"
+                              onClick={() => navigate(`/payment/${booking.bookingId || booking.id}`)}
+                            >
+                              <i className="bi bi-credit-card me-1"></i>Pay
+                            </button>
+                          )}
                           <button
                             className="btn btn-sm btn-outline-danger flex-fill"
                             onClick={() => handleCancel(booking.bookingId || booking.id)}
                           >
-                            Cancel
+                            {booking.status === 'PAID' ? 'Cancel & Refund' : 'Cancel'}
                           </button>
                         </>
                       )}

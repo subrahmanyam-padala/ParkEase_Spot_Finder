@@ -84,6 +84,16 @@ export const fetchAdminReports = async () => {
   return data;
 };
 
+export const fetchAdminRefunds = async () => {
+  const { data } = await adminClient.get('/api/admin/refunds');
+  return data;
+};
+
+export const updateAdminRefundStatus = async (bookingId, status) => {
+  const { data } = await adminClient.put(`/api/admin/refunds/${bookingId}`, { status });
+  return data;
+};
+
 export const fetchAdminAlerts = async () => {
   const { data } = await adminClient.get('/api/admin/alerts');
   return data;
@@ -101,6 +111,7 @@ export const getAdminUsers = fetchAdminUsers;
 export const getAdminUsersList = fetchAdminUsersList;
 export const getAdminRevenue = fetchAdminRevenue;
 export const getAdminReports = fetchAdminReports;
+export const getAdminRefunds = fetchAdminRefunds;
 export const getAdminAlerts = fetchAdminAlerts;
 
 // --- Complaint APIs via admin client ---

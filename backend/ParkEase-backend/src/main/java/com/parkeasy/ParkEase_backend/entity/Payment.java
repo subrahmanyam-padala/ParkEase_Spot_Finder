@@ -41,6 +41,15 @@ public class Payment {
   @Column(name = "status", nullable = false, length = 20)
   private String status = "PENDING";
 
+  @Column(name = "refund_status", length = 30)
+  private String refundStatus = "NOT_APPLICABLE";
+
+  @Column(name = "refund_requested_at")
+  private LocalDateTime refundRequestedAt;
+
+  @Column(name = "extension_hours")
+  private Integer extensionHours;
+
   @Column(name = "created_at", nullable = false)
   private LocalDateTime createdAt;
 
@@ -139,6 +148,30 @@ public class Payment {
 
   public void setStatus(String status) {
     this.status = status;
+  }
+
+  public String getRefundStatus() {
+    return refundStatus;
+  }
+
+  public void setRefundStatus(String refundStatus) {
+    this.refundStatus = refundStatus;
+  }
+
+  public LocalDateTime getRefundRequestedAt() {
+    return refundRequestedAt;
+  }
+
+  public void setRefundRequestedAt(LocalDateTime refundRequestedAt) {
+    this.refundRequestedAt = refundRequestedAt;
+  }
+
+  public Integer getExtensionHours() {
+    return extensionHours;
+  }
+
+  public void setExtensionHours(Integer extensionHours) {
+    this.extensionHours = extensionHours;
   }
 
   public LocalDateTime getCreatedAt() {

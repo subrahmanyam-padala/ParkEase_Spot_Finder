@@ -30,6 +30,10 @@ public interface AdminManagementService {
 
 	Map<String, Object> getReportsSummary();
 
+	List<Map<String, Object>> getRefundRequests();
+
+	Map<String, Object> updateRefundStatus(Long bookingId, String status);
+
 	List<AdminAlert> getActiveAlerts();
 
 	void dismissAlert(Long alertId);

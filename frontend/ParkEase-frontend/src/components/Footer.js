@@ -6,7 +6,7 @@ const Footer = () => {
       <div className="container">
         <p className="mb-1">
           <i className="bi bi-geo-alt-fill me-1"></i>
-          City Mall, Banglore
+          City Mall, Mumbai
         </p>
         <small className="text-white-50">
           © 2026 ParkEase - Smart Parking Solutions

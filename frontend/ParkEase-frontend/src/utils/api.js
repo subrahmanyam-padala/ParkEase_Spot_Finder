@@ -57,6 +57,10 @@ export const cancelBooking = (id) => API.post(`/bookings/${id}/cancel`);
 /* ==================== PAYMENTS ==================== */
 export const createPaymentOrder = (bookingId, paymentMethod) =>
   API.post('/payments/create-order', { bookingId, paymentMethod });
+export const createOverstayPaymentOrder = (bookingId, paymentMethod) =>
+  API.post('/payments/create-overstay-order', { bookingId, paymentMethod });
+export const createExtensionPaymentOrder = (bookingId, extensionHours, paymentMethod = 'UPI') =>
+  API.post('/payments/create-extension-order', { bookingId, extensionHours, paymentMethod });
 export const verifyPayment = (data) => API.post('/payments/verify', data);
 export const getMyPayments = () => API.get('/payments/my-payments');
 export const getPaymentsByBooking = (bookingId) => API.get(`/payments/booking/${bookingId}`);

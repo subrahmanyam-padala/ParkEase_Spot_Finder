@@ -23,6 +23,10 @@ public class BookingResponseDTO {
   private String userEmail;
   private Integer durationHours;
   private LocalDateTime createdAt;
+  private LocalDateTime cancellationRequestedAt;
+  private String refundStatus;
+  private Double spotPricePerHour;
+  private Double overstayMultiplier;
 
   public BookingResponseDTO() {
   }
@@ -177,5 +181,37 @@ public class BookingResponseDTO {
 
   public void setCreatedAt(LocalDateTime createdAt) {
     this.createdAt = createdAt;
+  }
+
+  public LocalDateTime getCancellationRequestedAt() {
+    return cancellationRequestedAt;
+  }
+
+  public void setCancellationRequestedAt(LocalDateTime cancellationRequestedAt) {
+    this.cancellationRequestedAt = cancellationRequestedAt;
+  }
+
+  public String getRefundStatus() {
+    return refundStatus;
+  }
+
+  public void setRefundStatus(String refundStatus) {
+    this.refundStatus = refundStatus;
+  }
+
+  public Double getSpotPricePerHour() {
+    return spotPricePerHour;
+  }
+
+  public void setSpotPricePerHour(Double spotPricePerHour) {
+    this.spotPricePerHour = spotPricePerHour;
+  }
+
+  public Double getOverstayMultiplier() {
+    return overstayMultiplier;
+  }
+
+  public void setOverstayMultiplier(Double overstayMultiplier) {
+    this.overstayMultiplier = overstayMultiplier;
   }
 }

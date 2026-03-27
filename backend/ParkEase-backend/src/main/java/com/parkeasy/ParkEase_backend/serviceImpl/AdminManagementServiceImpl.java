@@ -34,6 +34,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -247,6 +248,7 @@ public class AdminManagementServiceImpl implements AdminManagementService {
 			row.put("validUntil", booking.getValidUntil());
 			row.put("createdAt", booking.getCreatedAt());
 			row.put("updatedAt", booking.getUpdatedAt());
+			row.put("refundStatus", "NOT_APPLICABLE");
 			row.put("source", "legacy");
 			rows.add(row);
 		}
@@ -293,6 +295,7 @@ public class AdminManagementServiceImpl implements AdminManagementService {
 			row.put("validUntil", booking.getEndTime());
 			row.put("createdAt", booking.getCreatedAt());
 			row.put("updatedAt", booking.getUpdatedAt());
+			row.put("refundStatus", booking.getRefundStatus() == null ? "NOT_APPLICABLE" : booking.getRefundStatus());
 			row.put("source", "modern");
 			rows.add(row);
 		}
@@ -340,6 +343,117 @@ public class AdminManagementServiceImpl implements AdminManagementService {
 
 		return Map.of("highlights", highlights, "occupancyByFloor", occupancyByFloor, "paymentSplit",
 				overview.getPaymentSplit(), "weeklyRevenue", overview.getWeeklyRevenue());
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public List<Map<String, Object>> getRefundRequests() {
+		Set<String> validRefundStates = Set.of("REQUESTED", "ACCEPTED", "IN_PROGRESS", "COMPLETED");
+		return bookingRepository.findAll().stream()
+				.filter(booking -> {
+					String bookingRefundStatus = normalizeRefundStatus(booking.getRefundStatus());
+					if (bookingRefundStatus != null && validRefundStates.contains(bookingRefundStatus)) {
+						return true;
+					}
+					return paymentRepository.findByBookingBookingId(booking.getBookingId()).stream()
+							.map(payment -> normalizeRefundStatus(payment.getRefundStatus()))
+							.anyMatch(status -> status != null && validRefundStates.contains(status));
+				})
+				.sorted(Comparator.comparing(Booking::getCancellationRequestedAt,
+						Comparator.nullsLast(Comparator.reverseOrder())))
+				.map(booking -> {
+					List<Payment> bookingPayments = paymentRepository.findByBookingBookingId(booking.getBookingId());
+					String bookingRefundStatus = normalizeRefundStatus(booking.getRefundStatus());
+					String paymentRefundStatus = bookingPayments.stream()
+							.map(payment -> normalizeRefundStatus(payment.getRefundStatus()))
+							.filter(status -> status != null && validRefundStates.contains(status))
+							.findFirst()
+							.orElse(null);
+					String effectiveRefundStatus = bookingRefundStatus != null ? bookingRefundStatus : paymentRefundStatus;
+
+					LocalDateTime effectiveRequestedAt = booking.getCancellationRequestedAt();
+					if (effectiveRequestedAt == null) {
+						effectiveRequestedAt = bookingPayments.stream()
+								.map(Payment::getRefundRequestedAt)
+								.filter(ts -> ts != null)
+								.findFirst()
+								.orElse(booking.getUpdatedAt());
+					}
+
+					Map<String, Object> row = new LinkedHashMap<>();
+					row.put("bookingId", booking.getBookingId());
+					row.put("ticketNumber",
+							booking.getTicketNumber() == null ? ("PKE-" + booking.getBookingId()) : booking.getTicketNumber());
+					row.put("refundStatus", effectiveRefundStatus == null ? "REQUESTED" : effectiveRefundStatus);
+					row.put("amount", booking.getTotalAmount() == null ? 0 : booking.getTotalAmount());
+					row.put("cancellationRequestedAt", effectiveRequestedAt);
+					row.put("userName",
+							booking.getUser() != null ? booking.getUser().getFullName() : "N/A");
+					row.put("userEmail",
+							booking.getUser() != null ? booking.getUser().getEmail() : "");
+					row.put("slot",
+							booking.getParkingSpot() != null ? booking.getParkingSpot().getSpotLabel() : "N/A");
+					return row;
+				})
+				.toList();
+	}
+
+	@Override
+	@Transactional
+	public Map<String, Object> updateRefundStatus(Long bookingId, String status) {
+		if (status == null || status.isBlank()) {
+			throw new RuntimeException("Refund status is required");
+		}
+
+		String normalized = status.trim().toUpperCase();
+		Set<String> allowed = Set.of("ACCEPTED", "IN_PROGRESS", "COMPLETED");
+		if (!allowed.contains(normalized)) {
+			throw new RuntimeException("Allowed refund statuses: ACCEPTED, IN_PROGRESS, COMPLETED");
+		}
+
+		Booking booking = bookingRepository.findById(bookingId)
+				.orElseThrow(() -> new RuntimeException("Booking not found"));
+
+		List<Payment> successfulPayments = paymentRepository.findByBookingBookingIdAndStatus(bookingId, "SUCCESS");
+		boolean paymentHasRefundWorkflow = successfulPayments.stream()
+				.anyMatch(payment -> {
+					String paymentRefundStatus = normalizeRefundStatus(payment.getRefundStatus());
+					return paymentRefundStatus != null && !"NOT_APPLICABLE".equals(paymentRefundStatus)
+							&& !"NOT_REQUESTED".equals(paymentRefundStatus);
+				});
+
+		String bookingRefundStatus = normalizeRefundStatus(booking.getRefundStatus());
+		boolean bookingHasRefundWorkflow = bookingRefundStatus != null
+				&& !"NOT_APPLICABLE".equals(bookingRefundStatus)
+				&& !"NOT_REQUESTED".equals(bookingRefundStatus);
+
+		if (!bookingHasRefundWorkflow && !paymentHasRefundWorkflow) {
+			throw new RuntimeException("This booking has no refund workflow");
+		}
+
+		booking.setRefundStatus(normalized);
+		bookingRepository.save(booking);
+
+		for (Payment payment : successfulPayments) {
+			payment.setRefundStatus(normalized);
+			if (payment.getRefundRequestedAt() == null) {
+				payment.setRefundRequestedAt(LocalDateTime.now());
+			}
+			paymentRepository.save(payment);
+		}
+
+		return Map.of(
+				"bookingId", booking.getBookingId(),
+				"refundStatus", booking.getRefundStatus(),
+				"message", "Refund status updated");
+	}
+
+	private String normalizeRefundStatus(String value) {
+		if (value == null) {
+			return null;
+		}
+		String normalized = value.trim().toUpperCase();
+		return normalized.isEmpty() ? null : normalized;
 	}
 
 	@Override

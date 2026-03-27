@@ -34,6 +34,7 @@ import AdminAdminUsersPage from './pages/admin/AdminAdminUsersPage';
 import AdminReportsPage from './pages/admin/AdminReportsPage';
 import AdminComplaintsPage from './pages/admin/AdminComplaintsPage';
 import AdminScannerPage from './pages/admin/AdminScannerPage';
+import AdminRefundsPage from './pages/admin/AdminRefundsPage';
 import AdminLoginPage from './pages/admin/AdminLoginPage';
 import AdminRegisterPage from './pages/admin/AdminRegisterPage';
 import AdminForgotPasswordPage from './pages/admin/AdminForgotPasswordPage';
@@ -71,6 +72,7 @@ function App() {
           <Route path="admin-users" element={<AdminAdminUsersPage />} />
           <Route path="reports" element={<AdminReportsPage />} />
           <Route path="complaints" element={<AdminComplaintsPage />} />
+          <Route path="refunds" element={<AdminRefundsPage />} />
         </Route>
 
         {/* ================= USER PROTECTED ROUTES ================= */}

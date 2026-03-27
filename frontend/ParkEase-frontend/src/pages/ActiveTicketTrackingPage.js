@@ -98,6 +98,11 @@ const ActiveTicketTrackingPage = () => {
     }
   };
 
+  const handleOverstayPayment = () => {
+    if (!activeBooking?.bookingId) return;
+    navigate(`/ticket/${activeBooking.bookingId}`);
+  };
+
   if (loading) {
     return (
       <div className="min-vh-100 d-flex flex-column" style={{ backgroundColor: '#ECF0F1' }}>
@@ -147,10 +152,15 @@ const ActiveTicketTrackingPage = () => {
   const remainingMs = Math.max(endTime.getTime() - now.getTime(), 0);
   const progress = Math.min((elapsedMs / totalDurationMs) * 100, 100);
   const isExpired = remainingMs <= 0;
-  const isCheckedIn = activeBooking.status === 'CHECKED_IN';
+  const normalizedStatus = (activeBooking.status || '').toUpperCase();
+  const isCheckedIn = normalizedStatus === 'CHECKED_IN';
+  const isOverstayPending = normalizedStatus === 'OVERSTAY' || (isCheckedIn && isExpired);
+  const isOverstayPaid = normalizedStatus === 'OVERSTAY_PAID';
 
   // Get status display
   const getStatusText = () => {
+    if (isOverstayPending) return 'Overstay Pending';
+    if (isOverstayPaid) return 'Overstay Paid';
     if (activeBooking.status === 'CHECKED_IN') return 'Parked';
     if (activeBooking.status === 'PAID') return 'Ready to Enter';
     if (isExpired) return 'Time Up';
@@ -208,6 +218,22 @@ const ActiveTicketTrackingPage = () => {
               </div>
             </div>
           </div>
+
+          {isOverstayPending && (
+            <div className="alert alert-danger fade-in" role="alert">
+              <h6 className="fw-bold mb-2">⚠️ Overstay Detected!</h6>
+              <div className="small mb-1">Ticket: {activeBooking.ticketNumber || '--'}</div>
+              <div className="small mb-1">Spot: {activeBooking.spotLabel || '--'}</div>
+              <div className="small mb-1">Your booking expired at {endTime.toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}.</div>
+              <div className="small mb-1">
+                Rate: ₹{activeBooking.spotPricePerHour || 75}/hr x {activeBooking.overstayMultiplier || 1.5}x
+              </div>
+              <div className="small mb-3">Please pay the overstay amount in app before scanning at exit gate.</div>
+              <button className="btn btn-danger btn-sm" onClick={handleOverstayPayment}>
+                <>Pay Overstay ₹{activeBooking.overstayFee || 0}</>
+              </button>
+            </div>
+          )}
 
           <div className="row g-4">
             <div className="col-12 col-lg-8">
@@ -315,9 +341,13 @@ const ActiveTicketTrackingPage = () => {
               </div>
 
               <div className="d-grid gap-2 fade-in">
-                <button className="btn btn-primary" onClick={() => navigate(`/ticket/${activeBooking.bookingId}`)}>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => navigate(`/ticket/${activeBooking.bookingId}`)}
+                  disabled={isOverstayPending}
+                >
                   <i className="bi bi-qr-code me-2"></i>
-                  View QR Ticket
+                  {isOverstayPending ? 'QR Disabled for Overstay' : 'View QR Ticket'}
                 </button>
                 <button className="btn btn-outline-primary" onClick={() => navigate('/dashboard')}>
                   <i className="bi bi-arrow-left me-2"></i>

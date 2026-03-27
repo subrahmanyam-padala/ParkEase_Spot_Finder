@@ -10,6 +10,10 @@ public interface PaymentService {
 
   PaymentResponseDTO createPaymentOrder(Integer userId, PaymentRequestDTO requestDTO);
 
+  PaymentResponseDTO createOverstayPaymentOrder(Integer userId, PaymentRequestDTO requestDTO);
+
+  PaymentResponseDTO createExtensionPaymentOrder(Integer userId, PaymentRequestDTO requestDTO);
+
   PaymentResponseDTO verifyPayment(PaymentVerifyDTO verifyDTO);
 
   List<PaymentResponseDTO> getPaymentsByUserId(Integer userId);
