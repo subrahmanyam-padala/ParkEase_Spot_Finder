@@ -1,6 +1,6 @@
 # ParkEase Frontend
 
-ParkEase is a React frontend for the ABC City Mall smart parking system. It includes user flows for booking, payment, tickets, and profile management, plus a separate admin dashboard for operations.
+ParkEase is a React frontend for the City Mall smart parking system. It includes user flows for booking, payment, tickets, and profile management, plus a separate admin dashboard for operations.
 
 ## Frontend and Backend
 
