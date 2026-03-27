@@ -423,7 +423,7 @@ public class ChatbotServiceImpl implements ChatbotService {
 					buildSuggestions("Find a spot", "find_spot", "Main menu", "menu"));
 		}
 
-		StringBuilder reply = new StringBuilder("🏢 **Parking Zones at ABC City Mall:**\n\n");
+		StringBuilder reply = new StringBuilder("🏢 **Parking Zones at City Mall:**\n\n");
 		for (String zone : zones) {
 			long total = parkingSpotRepository.countTotalSpotsByZone(zone);
 			long occupied = parkingSpotRepository.countOccupiedSpotsByZone(zone);
@@ -528,7 +528,7 @@ public class ChatbotServiceImpl implements ChatbotService {
 
 	private ChatbotResponseDTO handleCancellation() {
 		return new ChatbotResponseDTO(
-				"❌ **How to Cancel a Booking:\n\n" + "1. Tap **Bookings** in the app\n"
+				"❌ How to Cancel a Booking:\n\n" + "1. Tap **Bookings** in the app\n"
 						+ "2. Select the booking you want to cancel\n"
 						+ "3. Tap **Cancel Booking** — your spot is freed immediately\n\n"
 						+ "⚠️ **Note:** Cancellations are only possible before you check in.\n"
@@ -551,7 +551,7 @@ public class ChatbotServiceImpl implements ChatbotService {
 	}
 
 	private ChatbotResponseDTO handleSupportInfo() {
-		return new ChatbotResponseDTO("🏢 **ParkEase — ABC City Mall Parking**\n\n"
+		return new ChatbotResponseDTO("🏢 **ParkEase — City Mall Parking**\n\n"
 				+ "🕐 **Operating Hours:** 6:00 AM – 11:00 PM (all days)\n\n"
 				+ "📞 **Support Helpline:** +91-1800-PARKEASE (toll-free)\n" + "📧 **Email:** support@parkease.in\n"
 				+ "🌐 **In-app support:** Tap **Profile → Help & Support**\n\n"

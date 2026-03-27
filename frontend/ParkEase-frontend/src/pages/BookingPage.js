@@ -86,7 +86,7 @@ const BookingPage = () => {
           <div className="mb-4 fade-in">
             <h2 className="fw-bold" style={{ color: '#2C3E50' }}>
               <i className="bi bi-building me-2"></i>
-              ABC City Mall Parking
+              City Mall Parking
             </h2>
             <div className="d-flex align-items-center mt-2">
               <span
