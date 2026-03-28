@@ -1,51 +1,69 @@
-﻿import React, { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { useApp } from '../context/AppContext';
-import { Navbar, Footer, LoadingSpinner } from '../components';
+import React, { useEffect, useState } from 'react';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { QRCodeSVG } from 'qrcode.react';
+import { getBookingById } from '../utils/api';
+import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
+import BottomNav from '../components/BottomNav';
 
 const TicketPage = () => {
-  const { bookingId } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
-  const { getBooking, refreshBookings } = useApp();
+  const { bookingId } = useParams();
+  const [booking, setBooking] = useState(null);
   const [loading, setLoading] = useState(true);
-
-  const booking = getBooking(bookingId);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    const bootstrap = async () => {
-      if (!bookingId) {
-        setLoading(false);
-        return;
-      }
+    loadTicket();
+  }, []);
 
-      if (!booking) {
-        try {
-          await refreshBookings();
-        } catch {
-          // no-op, fallback UI handles missing ticket
-        }
+  const loadTicket = async () => {
+    try {
+      // Supports both { booking: {...} } and direct booking object in navigation state.
+      if (location.state?.bookingId) {
+        setBooking(location.state);
+      } else if (location.state?.booking) {
+        setBooking(location.state.booking);
+      } else if (bookingId) {
+        const res = await getBookingById(bookingId);
+        setBooking(res.data);
       }
-
+    } catch (err) {
+      setError(err.response?.data?.error || err.response?.data?.message || 'Could not load ticket details.');
+    } finally {
       setLoading(false);
-    };
+    }
+  };
 
-    bootstrap();
-  }, [booking, bookingId, refreshBookings]);
+  const formatDateTime = (dt) => {
+    if (!dt) return '--';
+    return new Date(dt).toLocaleString('en-IN', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    });
+  };
 
   if (loading) {
-    return <LoadingSpinner message="Generating your ticket..." />;
+    return (
+      <div className="min-vh-100 d-flex align-items-center justify-content-center" style={{ backgroundColor: '#ECF0F1' }}>
+        <div className="text-center">
+          <div className="spinner-border text-primary mb-3" role="status"></div>
+          <p>Loading ticket...</p>
+        </div>
+      </div>
+    );
   }
 
   if (!booking) {
     return (
       <div className="min-vh-100 d-flex flex-column" style={{ backgroundColor: '#ECF0F1' }}>
         <Navbar />
-        <div className="main-content flex-grow-1 d-flex align-items-center justify-content-center py-4">
-          <div className="card p-4 text-center" style={{ maxWidth: '520px', width: '100%' }}>
-            <i className="bi bi-ticket-perforated" style={{ fontSize: '3rem', color: '#00C4B4' }}></i>
-            <h4 className="mt-3">Ticket Not Found</h4>
-            <p className="text-muted">The booking you are looking for does not exist.</p>
-            <button className="btn btn-primary mt-2" onClick={() => navigate('/dashboard')}>
+        <div className="flex-grow-1 d-flex align-items-center justify-content-center">
+          <div className="text-center">
+            <i className="bi bi-exclamation-triangle text-danger" style={{ fontSize: '4rem' }}></i>
+            <h4 className="mt-3">{error || 'No ticket data found.'}</h4>
+            <button className="btn btn-primary mt-3" onClick={() => navigate('/dashboard')}>
               Go to Dashboard
             </button>
           </div>
@@ -60,95 +78,140 @@ const TicketPage = () => {
       <Navbar />
 
       <div className="main-content flex-grow-1 py-4">
-        <div className="container">
-          <div className="row justify-content-center">
-            <div className="col-12 col-md-8 col-lg-6">
-              <div className="text-center mb-4 fade-in">
-                <div
-                  className="rounded-circle d-inline-flex align-items-center justify-content-center mb-3"
-                  style={{ width: '80px', height: '80px', backgroundColor: 'rgba(39, 174, 96, 0.15)' }}
-                >
-                  <i className="bi bi-check-lg" style={{ fontSize: '3rem', color: '#27AE60' }}></i>
-                </div>
-                <h3 className="fw-bold" style={{ color: '#27AE60' }}>
-                  Booking Confirmed!
-                </h3>
-                <p className="text-muted">Your payment and ticket are confirmed by backend.</p>
-              </div>
-
-              <div className="ticket fade-in">
-                <div className="ticket-header">
-                  <div className="d-flex align-items-center justify-content-center mb-2">
-                    <i className="bi bi-ticket-perforated-fill me-2" style={{ fontSize: '1.5rem' }}></i>
-                    <span className="fs-4 fw-bold">PARKING TICKET</span>
-                  </div>
-                  <p className="mb-0 opacity-75">Ticket #{booking.ticketNumber || booking.id}</p>
-                </div>
-
-                <div className="ticket-body">
-                  <div className="text-center mb-4">
-                    <p className="text-muted small mb-1">Slot Number</p>
-                    <div
-                      className="d-inline-flex align-items-center justify-content-center rounded-3 px-4 py-3"
-                      style={{ backgroundColor: 'rgba(0, 196, 180, 0.1)' }}
-                    >
-                      <span className="fw-bold" style={{ fontSize: '3rem', color: '#00C4B4' }}>
-                        {booking.slot}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="row g-3 mb-4">
-                    <div className="col-6 text-center">
-                      <p className="text-muted small mb-1">Duration</p>
-                      <p className="fw-bold mb-0">{booking.duration} Hours</p>
-                    </div>
-                    <div className="col-6 text-center">
-                      <p className="text-muted small mb-1">Valid Until</p>
-                      <p className="fw-bold mb-0">{booking.validUntil}</p>
-                    </div>
-                    <div className="col-6 text-center">
-                      <p className="text-muted small mb-1">Vehicle</p>
-                      <p className="fw-bold mb-0">{booking.vehicleNumber || 'N/A'}</p>
-                    </div>
-                    <div className="col-6 text-center">
-                      <p className="text-muted small mb-1">Amount</p>
-                      <p className="fw-bold mb-0" style={{ color: '#27AE60' }}>
-                        Rs {booking.amount} Paid
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="text-center p-3 rounded" style={{ backgroundColor: '#f8f9fa' }}>
-                    <p className="mb-1 fw-semibold" style={{ color: '#2C3E50' }}>
-                      <i className="bi bi-geo-alt-fill me-1" style={{ color: '#00C4B4' }}></i>
-                      Zone {booking.zone || 'Main'}
-                    </p>
-                    <p className="text-muted small mb-0">
-                      {booking.navigationPath || 'Follow signs to your assigned slot'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="d-grid gap-2 mt-4 fade-in">
-                {booking.qrCodeUrl ? (
-                  <a className="btn btn-primary" href={booking.qrCodeUrl} target="_blank" rel="noreferrer">
-                    <i className="bi bi-qr-code me-2"></i>
-                    Open QR Ticket
-                  </a>
-                ) : null}
-                <button className="btn btn-outline-primary" onClick={() => navigate('/dashboard')}>
-                  <i className="bi bi-arrow-left me-2"></i>
-                  Back to Dashboard
-                </button>
-              </div>
+        <div className="container" style={{ maxWidth: '500px' }}>
+          {/* Success Banner */}
+          <div className="text-center mb-4 fade-in">
+            <div
+              className="rounded-circle d-inline-flex align-items-center justify-content-center mb-3"
+              style={{ width: '80px', height: '80px', backgroundColor: '#27AE60' }}
+            >
+              <i className="bi bi-check-lg text-white" style={{ fontSize: '2.5rem' }}></i>
             </div>
+            <h3 className="fw-bold" style={{ color: '#2C3E50' }}>
+              Payment Successful!
+            </h3>
+            <p className="text-muted">Your parking spot is confirmed</p>
+          </div>
+
+          {/* Ticket Card */}
+          <div className="card shadow-sm mb-4 fade-in" style={{ borderRadius: '16px', overflow: 'hidden' }}>
+            {/* Header strip */}
+            <div className="text-center py-3" style={{ backgroundColor: '#2C3E50', color: 'white' }}>
+              <h5 className="mb-1 fw-bold">PARKING TICKET</h5>
+              <span className="badge bg-success px-3 py-1">
+                {booking.status || 'CONFIRMED'}
+              </span>
+            </div>
+
+            <div className="card-body p-4">
+              {/* Ticket Number */}
+              <div className="text-center mb-3">
+                <small className="text-muted">Ticket Number</small>
+                <h4 className="fw-bold mb-0" style={{ color: '#00C4B4', letterSpacing: '2px' }}>
+                  {booking.ticketNumber || '--'}
+                </h4>
+              </div>
+
+              <hr />
+
+              {/* QR Code */}
+              {
+                <div className="text-center my-3">
+                  {booking.qrCodeUrl && !booking.qrCodeUrl.startsWith('LOCAL:') ? (
+                    <img
+                      src={booking.qrCodeUrl}
+                      alt="QR Code"
+                      style={{ width: '180px', height: '180px', borderRadius: '8px' }}
+                    />
+                  ) : (
+                    <QRCodeSVG
+                      value={JSON.stringify({
+                        ticket_no: booking.ticketNumber,
+                        spot: `${booking.spotLabel} - ${booking.zone}`,
+                        vehicle: booking.vehicleNumber,
+                        start_time: booking.startTime || '',
+                        end_time: booking.endTime || '',
+                        amount: booking.totalAmount,
+                      })}
+                      size={180}
+                      level="H"
+                    />
+                  )}
+                  <p className="text-muted small mt-2">Scan at entry/exit gate</p>
+                </div>
+              }
+
+              <hr />
+
+              {/* Details */}
+              <div className="row g-3">
+                <div className="col-6">
+                  <small className="text-muted d-block">Spot</small>
+                  <span className="fw-bold">{booking.spotLabel}</span>
+                </div>
+                <div className="col-6">
+                  <small className="text-muted d-block">Zone</small>
+                  <span className="fw-bold">{booking.zone}</span>
+                </div>
+                <div className="col-6">
+                  <small className="text-muted d-block">Vehicle</small>
+                  <span className="fw-bold">{booking.vehicleNumber}</span>
+                </div>
+                <div className="col-6">
+                  <small className="text-muted d-block">Amount Paid</small>
+                  <span className="fw-bold text-success">Rs {booking.totalAmount}</span>
+                </div>
+                <div className="col-6">
+                  <small className="text-muted d-block">Start Time</small>
+                  <span className="fw-bold small">{formatDateTime(booking.startTime)}</span>
+                </div>
+                <div className="col-6">
+                  <small className="text-muted d-block">End Time</small>
+                  <span className="fw-bold small">{formatDateTime(booking.endTime)}</span>
+                </div>
+              </div>
+
+              {booking.userName && (
+                <>
+                  <hr />
+                  <div className="text-center text-muted small">
+                    Booked by: {booking.userName} ({booking.userEmail})
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Footer strip */}
+            <div className="text-center py-2" style={{ backgroundColor: '#f8f9fa', borderTop: '2px dashed #dee2e6' }}>
+              <small className="text-muted">
+                <i className="bi bi-envelope me-1"></i>
+                A copy has been sent to your email
+              </small>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="d-grid gap-2 fade-in">
+            <button
+              className="btn btn-primary py-2"
+              onClick={() => navigate('/my-bookings')}
+            >
+              <i className="bi bi-list-ul me-2"></i>
+              View My Bookings
+            </button>
+            <button
+              className="btn btn-outline-secondary py-2"
+              onClick={() => navigate('/dashboard')}
+            >
+              <i className="bi bi-house me-2"></i>
+              Go to Dashboard
+            </button>
           </div>
         </div>
       </div>
 
       <Footer />
+      <BottomNav />
     </div>
   );
 };

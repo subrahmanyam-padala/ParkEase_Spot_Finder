@@ -56,8 +56,8 @@ const Navbar = () => {
                   </Link>
                 </li>
                 <li className="nav-item">
-                  <Link className="nav-link" to="/admin/analytics">
-                    <i className="bi bi-bar-chart-line me-1"></i> Admin
+                  <Link className="nav-link" to="/complaints">
+                    <i className="bi bi-exclamation-circle me-1"></i> Complaints
                   </Link>
                 </li>
                 <li className="nav-item">

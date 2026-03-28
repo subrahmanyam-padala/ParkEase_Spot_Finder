@@ -4,9 +4,11 @@ import com.parkeasy.ParkEase_backend.dto.BookingRequestDTO;
 import com.parkeasy.ParkEase_backend.dto.BookingResponseDTO;
 import com.parkeasy.ParkEase_backend.entity.Booking;
 import com.parkeasy.ParkEase_backend.entity.ParkingSpot;
+import com.parkeasy.ParkEase_backend.entity.ParkingSlot;
 import com.parkeasy.ParkEase_backend.entity.Users;
 import com.parkeasy.ParkEase_backend.repository.BookingRepository;
 import com.parkeasy.ParkEase_backend.repository.ParkingSpotRepository;
+import com.parkeasy.ParkEase_backend.repository.ParkingSlotRepository;
 import com.parkeasy.ParkEase_backend.repository.UsersRepository;
 import com.parkeasy.ParkEase_backend.service.BookingService;
 import com.parkeasy.ParkEase_backend.service.EmailService;
@@ -19,7 +21,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.io.File;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -27,6 +31,7 @@ public class BookingServiceImpl implements BookingService {
 
   private final BookingRepository bookingRepository;
   private final ParkingSpotRepository parkingSpotRepository;
+  private final ParkingSlotRepository parkingSlotRepository;
   private final UsersRepository usersRepository;
   private final PricingService pricingService;
   private final QrCodeService qrCodeService;
@@ -34,12 +39,14 @@ public class BookingServiceImpl implements BookingService {
 
   public BookingServiceImpl(BookingRepository bookingRepository,
       ParkingSpotRepository parkingSpotRepository,
+      ParkingSlotRepository parkingSlotRepository,
       UsersRepository usersRepository,
       PricingService pricingService,
       QrCodeService qrCodeService,
       EmailService emailService) {
     this.bookingRepository = bookingRepository;
     this.parkingSpotRepository = parkingSpotRepository;
+    this.parkingSlotRepository = parkingSlotRepository;
     this.usersRepository = usersRepository;
     this.pricingService = pricingService;
     this.qrCodeService = qrCodeService;
@@ -53,8 +60,8 @@ public class BookingServiceImpl implements BookingService {
     Users user = usersRepository.findById(userId)
         .orElseThrow(() -> new RuntimeException("User not found with ID: " + userId));
 
-    // 2. Validate and lock parking spot
-    ParkingSpot spot = parkingSpotRepository.findById(requestDTO.getSpotId())
+    // 2. Lock parking spot row to prevent concurrent double booking.
+    ParkingSpot spot = parkingSpotRepository.findBySpotId(requestDTO.getSpotId())
         .orElseThrow(() -> new RuntimeException("Parking spot not found with ID: " + requestDTO.getSpotId()));
 
     if (spot.getIsOccupied()) {
@@ -64,14 +71,20 @@ public class BookingServiceImpl implements BookingService {
     // 3. Check for conflicting bookings (double-booking prevention)
     LocalDateTime startTime = LocalDateTime.now();
     LocalDateTime endTime = startTime.plusHours(requestDTO.getDurationHours());
-    List<Booking> conflicts = bookingRepository.findConflictingBookings(
-        spot.getSpotId(), startTime, endTime);
+    List<Booking> possibleConflicts = bookingRepository.findByParkingSpotSpotIdAndStatusIn(
+        spot.getSpotId(), Arrays.asList("ACTIVE", "PAID", "CHECKED_IN", "OVERSTAY"));
+    List<Booking> conflicts = possibleConflicts.stream()
+        .filter(b -> overlaps(b.getStartTime(), b.getEndTime(), startTime, endTime))
+        .toList();
     if (!conflicts.isEmpty()) {
       throw new RuntimeException("Conflicting booking exists for spot " + spot.getSpotLabel());
     }
 
-    // 4. Calculate pricing with dynamic surge
-    double baseFee = pricingService.calculateBaseFee(requestDTO.getDurationHours());
+    // 4. Calculate pricing using selected spot rate with dynamic surge
+    double pricePerHour = (spot.getPricePerHour() != null && spot.getPricePerHour() > 0)
+        ? spot.getPricePerHour()
+        : 75.0;
+    double baseFee = pricePerHour * requestDTO.getDurationHours();
     double surgeFee = pricingService.calculateSurgeFee(baseFee);
     double totalAmount = baseFee + surgeFee;
 
@@ -94,6 +107,7 @@ public class BookingServiceImpl implements BookingService {
     // 7. Mark spot as occupied
     spot.setIsOccupied(true);
     parkingSpotRepository.save(spot);
+    syncLegacySlotStatus(spot.getSpotLabel(), true);
 
     // 8. Save booking
     Booking savedBooking = bookingRepository.save(booking);
@@ -123,6 +137,15 @@ public class BookingServiceImpl implements BookingService {
     return toResponseDTO(savedBooking);
   }
 
+  private boolean overlaps(LocalDateTime aStart, LocalDateTime aEnd, LocalDateTime bStart, LocalDateTime bEnd) {
+    if (aStart == null) {
+      return false;
+    }
+    LocalDateTime normalizedAEnd = aEnd == null ? LocalDateTime.MAX : aEnd;
+    LocalDateTime normalizedBEnd = bEnd == null ? LocalDateTime.MAX : bEnd;
+    return !aStart.isAfter(normalizedBEnd) && !normalizedAEnd.isBefore(bStart);
+  }
+
   @Override
   public BookingResponseDTO getBookingById(Long bookingId) {
     Booking booking = bookingRepository.findById(bookingId)
@@ -146,14 +169,16 @@ public class BookingServiceImpl implements BookingService {
 
   @Override
   public List<BookingResponseDTO> getActiveBookingsByUserId(Integer userId) {
-    return bookingRepository.findByUserUserIdAndStatus(userId, "ACTIVE").stream()
+    List<String> activeStatuses = Arrays.asList("ACTIVE", "PAID", "CHECKED_IN", "OVERSTAY", "OVERSTAY_PAID");
+    return bookingRepository.findByUserUserIdAndStatusIn(userId, activeStatuses).stream()
         .map(this::toResponseDTO)
         .toList();
   }
 
   @Override
   public List<BookingResponseDTO> getAllActiveBookings() {
-    return bookingRepository.findByStatus("ACTIVE").stream()
+    List<String> activeStatuses = Arrays.asList("ACTIVE", "PAID", "CHECKED_IN", "OVERSTAY", "OVERSTAY_PAID");
+    return bookingRepository.findByStatusIn(activeStatuses).stream()
         .map(this::toResponseDTO)
         .toList();
   }
@@ -175,6 +200,7 @@ public class BookingServiceImpl implements BookingService {
     ParkingSpot spot = booking.getParkingSpot();
     spot.setIsOccupied(false);
     parkingSpotRepository.save(spot);
+    syncLegacySlotStatus(spot.getSpotLabel(), false);
 
     Booking saved = bookingRepository.save(booking);
     return toResponseDTO(saved);
@@ -196,6 +222,7 @@ public class BookingServiceImpl implements BookingService {
     ParkingSpot spot = booking.getParkingSpot();
     spot.setIsOccupied(false);
     parkingSpotRepository.save(spot);
+    syncLegacySlotStatus(spot.getSpotLabel(), false);
 
     Booking saved = bookingRepository.save(booking);
     return toResponseDTO(saved);
@@ -235,7 +262,26 @@ public class BookingServiceImpl implements BookingService {
     dto.setNavigationPath(booking.getParkingSpot().getNavigationPath());
     dto.setUserName(booking.getUser().getFullName());
     dto.setUserEmail(booking.getUser().getEmail());
+
+    // Calculate durationHours from start/end times
+    if (booking.getStartTime() != null && booking.getEndTime() != null) {
+      long hours = java.time.temporal.ChronoUnit.HOURS.between(booking.getStartTime(), booking.getEndTime());
+      dto.setDurationHours((int) Math.max(hours, 1));
+    }
+    dto.setCreatedAt(booking.getCreatedAt());
+
     return dto;
+  }
+
+  private void syncLegacySlotStatus(String spotLabel, boolean occupied) {
+    if (spotLabel == null || spotLabel.isBlank()) {
+      return;
+    }
+    Optional<ParkingSlot> legacySlot = parkingSlotRepository.findByNumber(spotLabel.trim().toUpperCase());
+    legacySlot.ifPresent(slot -> {
+      slot.setStatus(occupied ? "occupied" : "available");
+      parkingSlotRepository.save(slot);
+    });
   }
 
   private String buildTicketEmailBody(Booking booking, ParkingSpot spot, Users user) {

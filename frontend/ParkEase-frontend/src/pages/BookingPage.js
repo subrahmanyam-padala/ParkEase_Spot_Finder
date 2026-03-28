@@ -1,97 +1,75 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { Navbar, Footer, LoadingSpinner, ErrorAlert } from '../components';
-import { getApiErrorMessage } from '../services/apiClient';
-import { getAllSpots, getAvailableSpots } from '../services/parkeaseApi';
+import BottomNav from '../components/BottomNav';
+import { getAvailableSpots, createBooking as createBookingApi } from '../utils/api';
 
 const DURATION_OPTIONS = [
-  { hours: 1, price: 75, label: '1 Hour' },
-  { hours: 2, price: 150, label: '2 Hours' },
-  { hours: 3, price: 200, label: '3 Hours' },
-  { hours: 4, price: 250, label: '4 Hours' },
+  { hours: 1, label: '1 Hour' },
+  { hours: 2, label: '2 Hours' },
+  { hours: 3, label: '3 Hours' },
+  { hours: 4, label: '4 Hours' },
 ];
-
-const mapSpot = (spot) => ({
-  id: spot.spotId,
-  number: spot.spotLabel,
-  status: spot.isOccupied ? 'occupied' : 'available',
-  floor: spot.zone,
-  isEvOnly: Boolean(spot.isEvOnly),
-});
 
 const BookingPage = () => {
   const navigate = useNavigate();
-  const { createBooking } = useApp();
-
-  const [slots, setSlots] = useState([]);
-  const [selectedSlot, setSelectedSlot] = useState(null);
-  const [vehicleNumber, setVehicleNumber] = useState('');
+  const { user } = useApp();
+  const [spots, setSpots] = useState([]);
+  const [selectedSpot, setSelectedSpot] = useState(null);
   const [selectedDuration, setSelectedDuration] = useState(DURATION_OPTIONS[1]);
+  const [vehicleNumber, setVehicleNumber] = useState('');
   const [loading, setLoading] = useState(true);
-  const [bookingInProgress, setBookingInProgress] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
+  const selectedRate = Number(selectedSpot?.pricePerHour) || 0;
+  const estimatedAmount = selectedRate * selectedDuration.hours;
+
   useEffect(() => {
-    const loadSlots = async () => {
-      try {
-        setLoading(true);
-        let apiSlots = [];
-
-        try {
-          apiSlots = await getAllSpots();
-        } catch {
-          apiSlots = await getAvailableSpots();
-        }
-
-        const mappedSlots = (apiSlots || []).map(mapSpot);
-        setSlots(mappedSlots);
-      } catch (apiError) {
-        setError(getApiErrorMessage(apiError, 'Failed to load parking slots'));
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadSlots();
+    loadSpots();
   }, []);
 
-  const availableCount = slots.filter((slot) => slot.status === 'available').length;
-  const totalCount = slots.length;
-
-  const handleSlotSelect = (slot) => {
-    if (slot.status === 'occupied') {
-      return;
+  const loadSpots = async () => {
+    try {
+      const res = await getAvailableSpots();
+      setSpots(res.data || []);
+    } catch {
+      setSpots([]);
+    } finally {
+      setLoading(false);
     }
-    setSelectedSlot(selectedSlot?.id === slot.id ? null : slot);
+  };
+
+  const handleSpotSelect = (spot) => {
+    setSelectedSpot(selectedSpot?.spotId === spot.spotId ? null : spot);
   };
 
   const handleBooking = async () => {
-    if (!selectedSlot) {
-      setError('Please select a parking slot');
+    if (!selectedSpot) {
+      setError('Please select a parking spot');
+      return;
+    }
+    if (!vehicleNumber.trim()) {
+      setError('Please enter your vehicle number');
       return;
     }
 
-    if (!vehicleNumber.trim()) {
-      setError('Please enter vehicle number');
-      return;
-    }
+    setSubmitting(true);
+    setError('');
 
     try {
-      setError('');
-      setBookingInProgress(true);
-
-      const booking = await createBooking({
-        spotId: selectedSlot.id,
+      const res = await createBookingApi({
+        spotId: selectedSpot.spotId,
         vehicleNumber: vehicleNumber.trim().toUpperCase(),
         durationHours: selectedDuration.hours,
       });
-
-      navigate(`/pay/${booking.id}`);
-    } catch (apiError) {
-      setError(getApiErrorMessage(apiError, 'Failed to create booking'));
+      const booking = res.data;
+      navigate(`/payment/${booking.bookingId}`, { state: booking });
+    } catch (err) {
+      setError(err.response?.data?.error || 'Unable to create booking. Please try again.');
     } finally {
-      setBookingInProgress(false);
+      setSubmitting(false);
     }
   };
 
@@ -100,10 +78,10 @@ const BookingPage = () => {
   }
 
   return (
-    <div className="min-vh-100 d-flex flex-column" style={{ backgroundColor: '#ECF0F1' }}>
+    <div className="mobile-page-wrapper">
       <Navbar />
 
-      <div className="main-content flex-grow-1 py-4">
+      <div className="main-content mobile-content flex-grow-1 py-4">
         <div className="container">
           <div className="mb-4 fade-in">
             <h2 className="fw-bold" style={{ color: '#2C3E50' }}>
@@ -111,9 +89,15 @@ const BookingPage = () => {
               ABC City Mall Parking
             </h2>
             <div className="d-flex align-items-center mt-2">
-              <span className="badge me-2 px-3 py-2" style={{ backgroundColor: '#27AE60' }}>
-                <i className="bi bi-circle-fill me-1" style={{ fontSize: '0.5rem' }}></i>
-                {availableCount}/{totalCount} Available
+              <span
+                className="badge me-2 px-3 py-2"
+                style={{ backgroundColor: '#27AE60' }}
+              >
+                <i
+                  className="bi bi-circle-fill me-1"
+                  style={{ fontSize: '0.5rem' }}
+                ></i>
+                {spots.length} Available
               </span>
               <span className="text-muted small">
                 <i className="bi bi-geo-alt me-1"></i>
@@ -145,16 +129,8 @@ const BookingPage = () => {
                     style={{
                       width: '20px',
                       height: '20px',
-                      backgroundColor: 'rgba(231, 76, 60, 0.15)',
-                      border: '2px solid #E74C3C',
+                      backgroundColor: '#00C4B4',
                     }}
-                  ></div>
-                  <span className="small">Occupied</span>
-                </div>
-                <div className="d-flex align-items-center">
-                  <div
-                    className="rounded me-2"
-                    style={{ width: '20px', height: '20px', backgroundColor: '#00C4B4' }}
                   ></div>
                   <span className="small">Selected</span>
                 </div>
@@ -165,51 +141,52 @@ const BookingPage = () => {
           <div className="card mb-4 fade-in">
             <div className="card-header">
               <i className="bi bi-grid-3x3-gap me-2"></i>
-              Select Your Parking Slot
+              Select Your Parking Spot
             </div>
             <div className="card-body">
               <div className="slot-grid">
-                {slots.map((slot) => (
+                {spots.map((spot) => (
                   <div
-                    key={slot.id}
+                    key={spot.spotId}
                     className={`slot ${
-                      slot.status === 'occupied'
-                        ? 'slot-occupied'
-                        : selectedSlot?.id === slot.id
+                      selectedSpot?.spotId === spot.spotId
                         ? 'slot-selected'
                         : 'slot-available'
                     }`}
-                    onClick={() => handleSlotSelect(slot)}
+                    onClick={() => handleSpotSelect(spot)}
                   >
                     <span className="slot-icon">
-                      {slot.status === 'occupied' ? (
-                        <i className="bi bi-x-circle-fill"></i>
-                      ) : selectedSlot?.id === slot.id ? (
+                      {selectedSpot?.spotId === spot.spotId ? (
                         <i className="bi bi-check-circle-fill"></i>
                       ) : (
                         <i className="bi bi-car-front"></i>
                       )}
                     </span>
-                    <span className="slot-number">{slot.number}</span>
+                    <span className="slot-number">{spot.spotLabel}</span>
+                    <small>{spot.zone}</small>
                   </div>
                 ))}
               </div>
+              {spots.length === 0 && !loading && (
+                <p className="text-center text-muted py-3">No available spots right now</p>
+              )}
             </div>
           </div>
 
+          {/* Vehicle Number */}
           <div className="card mb-4 fade-in">
             <div className="card-header">
-              <i className="bi bi-truck-front me-2"></i>
+              <i className="bi bi-car-front me-2"></i>
               Vehicle Details
             </div>
             <div className="card-body">
-              <label className="form-label fw-semibold">Vehicle Number</label>
               <input
                 type="text"
                 className="form-control"
-                placeholder="MH 01 AB 1234"
+                placeholder="Enter Vehicle Number (e.g., MH01AB1234)"
                 value={vehicleNumber}
-                onChange={(e) => setVehicleNumber(e.target.value.toUpperCase())}
+                onChange={(e) => setVehicleNumber(e.target.value)}
+                style={{ textTransform: 'uppercase' }}
               />
             </div>
           </div>
@@ -232,7 +209,6 @@ const BookingPage = () => {
                       onClick={() => setSelectedDuration(option)}
                     >
                       <div className="fw-bold">{option.label}</div>
-                      <small>Rs {option.price}</small>
                     </button>
                   </div>
                 ))}
@@ -247,20 +223,28 @@ const BookingPage = () => {
             </div>
             <div className="card-body">
               <div className="summary-row">
-                <span>Selected Slot</span>
-                <span className="fw-bold">{selectedSlot ? selectedSlot.number : '-- Select --'}</span>
+                <span>Selected Spot</span>
+                <span className="fw-bold">
+                  {selectedSpot ? `${selectedSpot.spotLabel} (${selectedSpot.zone})` : '-- Select --'}
+                </span>
+              </div>
+              <div className="summary-row">
+                <span>Vehicle Number</span>
+                <span className="fw-bold">
+                  {vehicleNumber || '-- Enter --'}
+                </span>
               </div>
               <div className="summary-row">
                 <span>Duration</span>
                 <span className="fw-bold">{selectedDuration.label}</span>
               </div>
               <div className="summary-row">
-                <span>Estimated Fee</span>
-                <span className="fw-bold">Rs {selectedDuration.price}</span>
+                <span>Rate / Hour</span>
+                <span className="fw-bold">₹{selectedSpot ? selectedRate : 0}</span>
               </div>
               <div className="summary-row">
-                <span>Total Amount</span>
-                <span>Rs {selectedDuration.price}</span>
+                <span>Estimated Amount</span>
+                <span className="fw-bold">₹{selectedSpot ? estimatedAmount : 0}</span>
               </div>
             </div>
           </div>
@@ -268,24 +252,19 @@ const BookingPage = () => {
           <button
             className="btn btn-primary w-100 py-3 fade-in"
             onClick={handleBooking}
-            disabled={!selectedSlot || bookingInProgress}
+            disabled={!selectedSpot || !vehicleNumber.trim() || submitting}
           >
-            {bookingInProgress ? (
-              <>
-                <span className="spinner-border spinner-border-sm me-2"></span>
-                Creating Booking...
-              </>
+            {submitting ? (
+              <><span className="spinner-border spinner-border-sm me-2"></span>Booking...</>
             ) : (
-              <>
-                <i className="bi bi-check-circle me-2"></i>
-                BOOK NOW - Rs {selectedDuration.price}
-              </>
+              <><i className="bi bi-check-circle me-2"></i>BOOK NOW</>
             )}
           </button>
         </div>
       </div>
 
       <Footer />
+      <BottomNav />
     </div>
   );
 };

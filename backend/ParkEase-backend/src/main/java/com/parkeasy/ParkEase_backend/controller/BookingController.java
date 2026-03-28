@@ -1,18 +1,26 @@
 package com.parkeasy.ParkEase_backend.controller;
 
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.parkeasy.ParkEase_backend.dto.BookingRequestDTO;
 import com.parkeasy.ParkEase_backend.dto.BookingResponseDTO;
 import com.parkeasy.ParkEase_backend.entity.Users;
 import com.parkeasy.ParkEase_backend.repository.UsersRepository;
 import com.parkeasy.ParkEase_backend.service.BookingService;
-import jakarta.validation.Valid;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-import java.util.Map;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/bookings")
@@ -41,7 +49,7 @@ public class BookingController {
   }
 
   @GetMapping("/{bookingId}")
-  public ResponseEntity<?> getBookingById(@PathVariable Long bookingId) {
+  public ResponseEntity<?> getBookingById(@PathVariable("bookingId") Long bookingId) {
     try {
       return ResponseEntity.ok(bookingService.getBookingById(bookingId));
     } catch (RuntimeException e) {
@@ -51,7 +59,7 @@ public class BookingController {
   }
 
   @GetMapping("/ticket/{ticketNumber}")
-  public ResponseEntity<?> getBookingByTicket(@PathVariable String ticketNumber) {
+  public ResponseEntity<?> getBookingByTicket(@PathVariable("ticketNumber") String ticketNumber) {
     try {
       return ResponseEntity.ok(bookingService.getBookingByTicketNumber(ticketNumber));
     } catch (RuntimeException e) {
@@ -78,7 +86,7 @@ public class BookingController {
   }
 
   @PostMapping("/{bookingId}/complete")
-  public ResponseEntity<?> completeBooking(@PathVariable Long bookingId) {
+  public ResponseEntity<?> completeBooking(@PathVariable("bookingId") Long bookingId) {
     try {
       return ResponseEntity.ok(bookingService.completeBooking(bookingId));
     } catch (RuntimeException e) {
@@ -88,7 +96,7 @@ public class BookingController {
   }
 
   @PostMapping("/{bookingId}/cancel")
-  public ResponseEntity<?> cancelBooking(@PathVariable Long bookingId) {
+  public ResponseEntity<?> cancelBooking(@PathVariable("bookingId") Long bookingId) {
     try {
       return ResponseEntity.ok(bookingService.cancelBooking(bookingId));
     } catch (RuntimeException e) {

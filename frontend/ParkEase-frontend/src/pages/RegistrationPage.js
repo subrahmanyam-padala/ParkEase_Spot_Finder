@@ -1,11 +1,13 @@
-﻿ import React, { useState } from "react";
+ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import apiClient from "../services/apiClient";
+import axios from "axios";
+import { useApp } from "../context/AppContext";
 import carImage from "../images/image2.avif";
 import "./LoginPage.css"; // reuse same CSS
 
 function RegistrationPage() {
   const navigate = useNavigate();
+  const { login } = useApp();
 
   const [formData, setFormData] = useState({
     fullName: "",
@@ -38,8 +40,8 @@ function RegistrationPage() {
     try {
       setLoading(true);
 
-      const response = await apiClient.post(
-        "/api/auth/send-otp",
+      const response = await axios.post(
+        `http://${window.location.hostname}:8080/api/auth/send-otp`,
         { email: formData.email }
       );
 
@@ -72,16 +74,24 @@ function RegistrationPage() {
     try {
       setLoading(true);
 
-      const response = await apiClient.post(
-        "/api/auth/register",
+      const response = await axios.post(
+        `http://${window.location.hostname}:8080/api/auth/register`,
         formData
       );
 
       setIsSuccess(true);
       setMessage(response.data.message);
 
+      localStorage.setItem("parkease_token", response.data.token);
+      login({
+        name: formData.fullName,
+        username: formData.username,
+        email: formData.email,
+        role: response.data.role || "USER",
+      });
+
       setTimeout(() => {
-        navigate("/login");
+        navigate("/dashboard");
       }, 1000);
 
     } catch (error) {
@@ -251,4 +261,3 @@ function RegistrationPage() {
 }
 
 export default RegistrationPage;
-

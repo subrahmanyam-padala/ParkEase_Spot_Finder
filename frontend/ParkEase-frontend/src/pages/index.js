@@ -9,3 +9,6 @@ export { default as ActiveTicketTrackingPage } from './ActiveTicketTrackingPage'
 export { default as AdminAnalyticsPage } from './AdminAnalyticsPage';
 export { default as NotFoundPage } from './NotFoundPage';
 export { default as ForgotPasswordPage } from './ForgotPasswordPage';
+export { default as ChatbotPage } from './ChatbotPage';
+export { default as MyBookingsPage } from './MyBookingsPage';
+export { default as ProfilePage } from './ProfilePage';

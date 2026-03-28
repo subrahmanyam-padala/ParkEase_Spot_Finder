@@ -1,18 +1,20 @@
-﻿ import React, { useState } from "react";
+ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import apiClient from "../services/apiClient";
+import axios from "axios";
 import parkingBg from "../images/image3.jpg";
 
 function ForgotPasswordPage() {
   const navigate = useNavigate();
+  const [accountType, setAccountType] = useState("user");
 
   const [formData, setFormData] = useState({
     email: "",
+    adminId: "",
     otp: "",
     password: "",
     confirmPassword: ""
   });
-
+  
   const [otpSent, setOtpSent] = useState(false);
   const [message, setMessage] = useState("");
   const [isSuccess, setIsSuccess] = useState(false);
@@ -26,6 +28,12 @@ function ForgotPasswordPage() {
   };
 
   const handleSendOtp = async () => {
+    if (accountType === "admin") {
+      setIsSuccess(false);
+      setMessage("Admin reset does not require OTP. Enter Admin ID and new password.");
+      return;
+    }
+
     if (!formData.email) {
       setIsSuccess(false);
       setMessage("Please enter email first");
@@ -34,8 +42,8 @@ function ForgotPasswordPage() {
 
     try {
       setLoading(true);
-      const response = await apiClient.post(
-        "/api/auth/send-otp",
+      const response = await axios.post(
+        `http://${window.location.hostname}:8080/api/auth/send-otp`,
         { email: formData.email }
       );
 
@@ -53,9 +61,15 @@ function ForgotPasswordPage() {
   const handleReset = async (e) => {
     e.preventDefault();
 
-    if (!otpSent) {
+    if (accountType === "user" && !otpSent) {
       setIsSuccess(false);
       setMessage("Please verify your email with OTP first");
+      return;
+    }
+
+    if (accountType === "admin" && !formData.adminId.trim()) {
+      setIsSuccess(false);
+      setMessage("Please enter Admin ID");
       return;
     }
 
@@ -68,19 +82,28 @@ function ForgotPasswordPage() {
     try {
       setLoading(true);
 
-      const response = await apiClient.post(
-        "/api/auth/reset-password",
-        {
-          email: formData.email,
-          otp: formData.otp,
-          password: formData.password
-        }
-      );
+      const endpoint = accountType === "admin"
+        ? `http://${window.location.hostname}:8080/api/admin/auth/reset-password`
+        : `http://${window.location.hostname}:8080/api/auth/reset-password`;
+
+      const payload = accountType === "admin"
+        ? {
+            email: formData.email,
+            adminId: formData.adminId,
+            password: formData.password,
+          }
+        : {
+            email: formData.email,
+            otp: formData.otp,
+            password: formData.password,
+          };
+
+      const response = await axios.post(endpoint, payload);
 
       setIsSuccess(true);
       setMessage(response.data.message);
 
-      setTimeout(() => navigate("/login"), 1000);
+      setTimeout(() => navigate(accountType === "admin" ? "/admin/login" : "/login"), 1000);
 
     } catch (error) {
       setIsSuccess(false);
@@ -135,6 +158,37 @@ function ForgotPasswordPage() {
             Reset Password
           </h2>
 
+          <div style={{ display: "flex", gap: "10px", marginBottom: "15px" }}>
+            <button
+              type="button"
+              onClick={() => {
+                setAccountType("user");
+                setOtpSent(false);
+                setMessage("");
+              }}
+              style={{
+                ...toggleButtonStyle,
+                background: accountType === "user" ? "#20c997" : "rgba(255,255,255,0.15)",
+              }}
+            >
+              User
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setAccountType("admin");
+                setOtpSent(false);
+                setMessage("");
+              }}
+              style={{
+                ...toggleButtonStyle,
+                background: accountType === "admin" ? "#20c997" : "rgba(255,255,255,0.15)",
+              }}
+            >
+              Admin
+            </button>
+          </div>
+
           {message && (
             <div
               style={{
@@ -163,17 +217,31 @@ function ForgotPasswordPage() {
                 style={inputStyle}
               />
 
-              <button
-                type="button"
-                onClick={handleSendOtp}
-                disabled={loading}
-                style={otpButtonStyle}
-              >
-                {loading ? "Sending..." : "Send OTP"}
-              </button>
+              {accountType === "user" && (
+                <button
+                  type="button"
+                  onClick={handleSendOtp}
+                  disabled={loading}
+                  style={otpButtonStyle}
+                >
+                  {loading ? "Sending..." : "Send OTP"}
+                </button>
+              )}
             </div>
 
-            {otpSent && (
+            {accountType === "admin" && (
+              <input
+                type="text"
+                name="adminId"
+                placeholder="Admin ID"
+                value={formData.adminId}
+                onChange={handleChange}
+                required
+                style={{ ...inputStyle, marginBottom: "15px" }}
+              />
+            )}
+
+            {accountType === "user" && otpSent && (
               <input
                 type="text"
                 name="otp"
@@ -217,7 +285,7 @@ function ForgotPasswordPage() {
           <p style={{ textAlign: "center", marginTop: "20px", fontSize: "14px" }}>
             Remembered your password?{" "}
             <span
-              onClick={() => navigate("/login")}
+              onClick={() => navigate(accountType === "admin" ? "/admin/login" : "/login")}
               style={{ color: "#fff", fontWeight: "600", cursor: "pointer" }}
             >
               Login
@@ -257,6 +325,16 @@ const mainButtonStyle = {
   color: "#fff",
   fontWeight: "600",
   cursor: "pointer"
+};
+
+const toggleButtonStyle = {
+  flex: 1,
+  border: "none",
+  borderRadius: "10px",
+  color: "#fff",
+  fontWeight: "600",
+  padding: "10px 12px",
+  cursor: "pointer",
 };
 
 export default ForgotPasswordPage;

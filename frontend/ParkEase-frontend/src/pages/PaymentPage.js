@@ -1,67 +1,52 @@
-﻿import React, { useEffect, useMemo, useState } from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { useApp } from '../context/AppContext';
-import { Navbar, Footer, LoadingSpinner, ErrorAlert } from '../components';
-import { getApiErrorMessage } from '../services/apiClient';
+import React, { useEffect, useState } from 'react';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { createPaymentOrder, verifyPayment, getBookingById } from '../utils/api';
+import { Navbar, Footer, LoadingSpinner } from '../components';
+import BottomNav from '../components/BottomNav';
+
+const loadRazorpayScript = () => new Promise((resolve) => {
+  if (window.Razorpay) {
+    resolve(true);
+    return;
+  }
+
+  const script = document.createElement('script');
+  script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+  script.async = true;
+  script.onload = () => resolve(true);
+  script.onerror = () => resolve(false);
+  document.body.appendChild(script);
+});
 
 const PaymentPage = () => {
-  const { bookingId: bookingIdParam } = useParams();
-  const location = useLocation();
+  const { bookingId } = useParams();
   const navigate = useNavigate();
-  const { getBooking, processPayment, refreshBookings, loading: appLoading } = useApp();
-
-  const [paymentMethod, setPaymentMethod] = useState('UPI');
-  const [error, setError] = useState('');
-  const [processing, setProcessing] = useState(false);
+  const location = useLocation();
+  const [paymentMethod, setPaymentMethod] = useState('upi');
+  const [loading, setLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
-
-  const resolvedBookingId = useMemo(() => {
-    if (bookingIdParam) {
-      return Number(bookingIdParam);
-    }
-
-    const fromState = location?.state?.bookingId || location?.state?.id;
-    return fromState ? Number(fromState) : null;
-  }, [bookingIdParam, location]);
-
-  const booking = resolvedBookingId ? getBooking(resolvedBookingId) : null;
+  const [booking, setBooking] = useState(null);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    const bootstrap = async () => {
-      if (!resolvedBookingId) {
-        setPageLoading(false);
-        return;
-      }
+    loadBooking();
+  }, []);
 
-      if (!booking && !appLoading) {
-        try {
-          await refreshBookings();
-        } catch {
-          // no-op; handled via UI fallback
-        }
-      }
-
-      setPageLoading(false);
-    };
-
-    bootstrap();
-  }, [resolvedBookingId, booking, appLoading, refreshBookings]);
-
-  const handlePayment = async () => {
-    if (!resolvedBookingId) {
-      setError('Booking ID is missing');
-      return;
-    }
-
+  const loadBooking = async () => {
     try {
-      setError('');
-      setProcessing(true);
-      await processPayment(resolvedBookingId, paymentMethod);
-      navigate(`/ticket/${resolvedBookingId}`);
-    } catch (apiError) {
-      setError(getApiErrorMessage(apiError, 'Payment could not be completed'));
+      // BookingPage navigates with the booking object directly in state.
+      if (location.state?.bookingId) {
+        setBooking(location.state);
+      } else if (location.state?.booking) {
+        setBooking(location.state.booking);
+      } else {
+        const res = await getBookingById(bookingId);
+        setBooking(res.data);
+      }
+    } catch (err) {
+      setError(err.response?.data?.error || err.response?.data?.message || 'Could not load booking details.');
     } finally {
-      setProcessing(false);
+      setPageLoading(false);
     }
   };
 
@@ -69,14 +54,14 @@ const PaymentPage = () => {
     return <LoadingSpinner message="Loading payment details..." />;
   }
 
-  if (!resolvedBookingId) {
+  if (!booking) {
     return (
       <div className="min-vh-100 d-flex flex-column" style={{ backgroundColor: '#ECF0F1' }}>
         <Navbar />
-        <div className="main-content flex-grow-1 d-flex align-items-center justify-content-center py-4">
-          <div className="card p-4 text-center" style={{ maxWidth: '520px', width: '100%' }}>
-            <i className="bi bi-exclamation-triangle" style={{ fontSize: '3rem', color: '#E74C3C' }}></i>
-            <h4 className="mt-3">No payment data found</h4>
+        <div className="flex-grow-1 d-flex align-items-center justify-content-center">
+          <div className="text-center">
+            <i className="bi bi-exclamation-triangle text-danger" style={{ fontSize: '4rem' }}></i>
+            <h4 className="mt-3">{error || 'Booking Not Found'}</h4>
             <button className="btn btn-primary mt-3" onClick={() => navigate('/book')}>
               Book New Slot
             </button>
@@ -87,29 +72,66 @@ const PaymentPage = () => {
     );
   }
 
-  if (!booking) {
-    return (
-      <div className="min-vh-100 d-flex flex-column" style={{ backgroundColor: '#ECF0F1' }}>
-        <Navbar />
-        <div className="main-content flex-grow-1 d-flex align-items-center justify-content-center py-4">
-          <div className="card p-4 text-center" style={{ maxWidth: '520px', width: '100%' }}>
-            <i className="bi bi-ticket-perforated" style={{ fontSize: '3rem', color: '#00C4B4' }}></i>
-            <h4 className="mt-3">Booking not found</h4>
-            <p className="text-muted">Try refreshing bookings from dashboard or create a new booking.</p>
-            <button className="btn btn-primary mt-2" onClick={() => navigate('/dashboard')}>
-              Go to Dashboard
-            </button>
-          </div>
-        </div>
-        <Footer />
-      </div>
-    );
-  }
+  const handlePayment = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded) {
+        throw new Error('Unable to load Razorpay checkout. Please try again.');
+      }
+
+      const orderRes = await createPaymentOrder(booking.bookingId, paymentMethod);
+      const { razorpayOrderId, razorpayKeyId } = orderRes.data;
+
+      const options = {
+        key: razorpayKeyId,
+        amount: Math.round((booking.totalAmount || 0) * 100),
+        currency: 'INR',
+        name: 'ParkEase',
+        description: `Parking booking ${booking.ticketNumber || ''}`,
+        order_id: razorpayOrderId,
+        handler: async (response) => {
+          try {
+            const verifyRes = await verifyPayment({
+              razorpayOrderId: response.razorpay_order_id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature,
+            });
+
+            navigate(`/ticket/${booking.bookingId}`, {
+              state: { booking, payment: verifyRes.data },
+            });
+          } catch (verifyErr) {
+            setError(verifyErr.response?.data?.error || verifyErr.response?.data?.message || 'Payment verification failed.');
+          } finally {
+            setLoading(false);
+          }
+        },
+        modal: {
+          ondismiss: () => setLoading(false),
+        },
+        theme: {
+          color: '#00C4B4',
+        },
+      };
+
+      const razorpay = new window.Razorpay(options);
+      razorpay.on('payment.failed', (response) => {
+        setError(response.error?.description || 'Payment failed. Please try again.');
+        setLoading(false);
+      });
+      razorpay.open();
+    } catch (err) {
+      setError(err.response?.data?.error || err.response?.data?.message || err.message || 'Payment failed. Please try again.');
+      setLoading(false);
+    }
+  };
 
   const paymentMethods = [
-    { id: 'UPI', icon: 'bi-phone', label: 'UPI', desc: 'GPay, PhonePe, Paytm' },
-    { id: 'CARD', icon: 'bi-credit-card', label: 'Card', desc: 'Credit/Debit Card' },
-    { id: 'WALLET', icon: 'bi-wallet2', label: 'Wallet', desc: 'Digital Wallet' },
+    { id: 'upi', icon: 'bi-phone', label: 'UPI', desc: 'GPay, PhonePe, Paytm' },
+    { id: 'card', icon: 'bi-credit-card', label: 'Card', desc: 'Credit/Debit Card' },
+    { id: 'wallet', icon: 'bi-wallet2', label: 'Wallet', desc: 'Digital Wallet' },
   ];
 
   return (
@@ -123,10 +145,14 @@ const PaymentPage = () => {
               <i className="bi bi-credit-card me-2"></i>
               Complete Payment
             </h2>
-            <p className="text-muted">Backend mock payment flow (create-order + verify)</p>
+            <p className="text-muted">Secure payment powered by ParkEase</p>
           </div>
 
-          {error && <ErrorAlert message={error} onDismiss={() => setError('')} />}
+          {error && (
+            <div className="alert alert-danger fade-in">
+              <i className="bi bi-exclamation-circle me-2"></i>{error}
+            </div>
+          )}
 
           <div className="card mb-4 fade-in">
             <div className="card-header">
@@ -136,27 +162,29 @@ const PaymentPage = () => {
             <div className="card-body">
               <div className="row text-center g-3">
                 <div className="col-4">
-                  <p className="text-muted small mb-1">Slot</p>
+                  <p className="text-muted small mb-1">Spot</p>
                   <p className="fw-bold fs-4 mb-0" style={{ color: '#00C4B4' }}>
-                    {booking.slot}
+                    {booking.spotLabel}
                   </p>
                 </div>
                 <div className="col-4">
-                  <p className="text-muted small mb-1">Duration</p>
-                  <p className="fw-bold fs-4 mb-0">{booking.duration}h</p>
+                  <p className="text-muted small mb-1">Vehicle</p>
+                  <p className="fw-bold mb-0">{booking.vehicleNumber}</p>
                 </div>
                 <div className="col-4">
                   <p className="text-muted small mb-1">Amount</p>
-                  <p className="fw-bold fs-4 mb-0">Rs {booking.amount}</p>
+                  <p className="fw-bold fs-4 mb-0">Rs {booking.totalAmount}</p>
                 </div>
               </div>
               <hr />
               <div className="d-flex justify-content-between align-items-center flex-wrap">
                 <span className="text-muted">
                   <i className="bi bi-ticket-perforated me-1"></i>
-                  Ticket #{booking.ticketNumber || booking.id}
+                  Ticket: {booking.ticketNumber}
                 </span>
-                <span className="text-muted small">Valid until {booking.validUntil}</span>
+                <span className="text-muted small">
+                  {booking.zone}
+                </span>
               </div>
             </div>
           </div>
@@ -171,7 +199,9 @@ const PaymentPage = () => {
                 {paymentMethods.map((method) => (
                   <div key={method.id} className="col-12 col-md-4">
                     <div
-                      className={`payment-method ${paymentMethod === method.id ? 'selected' : ''}`}
+                      className={`payment-method ${
+                        paymentMethod === method.id ? 'selected' : ''
+                      }`}
                       onClick={() => setPaymentMethod(method.id)}
                     >
                       <i className={`bi ${method.icon}`}></i>
@@ -184,12 +214,19 @@ const PaymentPage = () => {
             </div>
           </div>
 
+          <div className="text-center mb-4 fade-in">
+            <p className="text-muted small">
+              <i className="bi bi-shield-lock me-1"></i>
+              Your payment is secured with 256-bit SSL encryption
+            </p>
+          </div>
+
           <button
             className="btn btn-success w-100 py-3 fade-in"
             onClick={handlePayment}
-            disabled={processing}
+            disabled={loading}
           >
-            {processing ? (
+            {loading ? (
               <>
                 <span className="spinner-border spinner-border-sm me-2"></span>
                 Processing Payment...
@@ -197,7 +234,7 @@ const PaymentPage = () => {
             ) : (
               <>
                 <i className="bi bi-lock me-2"></i>
-                Pay Rs {booking.amount} Now
+                Pay Rs {booking.totalAmount} Now
               </>
             )}
           </button>
@@ -205,6 +242,7 @@ const PaymentPage = () => {
       </div>
 
       <Footer />
+      <BottomNav />
     </div>
   );
 };

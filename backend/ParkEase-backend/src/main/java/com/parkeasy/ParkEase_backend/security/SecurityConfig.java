@@ -37,10 +37,15 @@ public class SecurityConfig {
 		http.cors(cors -> cors.configurationSource(corsConfigurationSource()))
 				.csrf(csrf -> csrf.disable())
 				.authorizeHttpRequests(auth -> auth
-						.requestMatchers("/api/auth/**").permitAll()
+						.requestMatchers("/api/auth/**", "/api/admin/auth/login", "/api/admin/auth/register",
+								"/api/admin/auth/reset-password", "/api/parking/**")
+						.permitAll()
+						.requestMatchers("/api/scan/**").permitAll()
 						.requestMatchers("/api/users/register").permitAll()
 						.requestMatchers("/api/spots/available/**", "/api/spots/zones", "/api/spots/stats").permitAll()
 						.requestMatchers("/api/chatbot/**").permitAll()
+						.requestMatchers(HttpMethod.GET, "/api/complaints/all").hasRole("ADMIN")
+						.requestMatchers(HttpMethod.PUT, "/api/complaints/*/respond").hasRole("ADMIN")
 						.requestMatchers(HttpMethod.GET, "/api/admin/pricing", "/api/admin/pricing/calculate").permitAll()
 						.requestMatchers(HttpMethod.GET, "/api/admin/pricing/surge-status").permitAll()
 						.requestMatchers(HttpMethod.GET, "/api/admin/occupancy/current").permitAll()

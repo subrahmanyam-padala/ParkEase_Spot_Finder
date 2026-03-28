@@ -1,8 +1,8 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { Navbar, Footer, ErrorAlert } from '../components';
-import { getApiErrorMessage } from '../services/apiClient';
+import { loginUser } from '../utils/api';
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -23,19 +23,25 @@ const LoginPage = () => {
     setLoading(true);
 
     try {
-      if (!formData.username || !formData.password) {
-        setError('Please enter valid credentials');
-        return;
+      const res = await loginUser(formData.username, formData.password);
+      const { token, username, role, message, fullName, email, userId } = res.data;
+
+      if (token) {
+        localStorage.setItem('parkease_token', token);
+        login({
+          name: fullName || username,
+          fullName: fullName || username,
+          username: username,
+          email: email || '',
+          userId: userId,
+          role: role,
+        });
+        navigate('/dashboard');
+      } else {
+        setError(message || 'Login failed');
       }
-
-      await login({
-        username: formData.username.trim(),
-        password: formData.password,
-      });
-
-      navigate('/dashboard');
-    } catch (apiError) {
-      setError(getApiErrorMessage(apiError, 'Login failed'));
+    } catch (err) {
+      setError(err.response?.data?.message || 'Invalid credentials');
     } finally {
       setLoading(false);
     }
@@ -51,10 +57,11 @@ const LoginPage = () => {
             <div className="col-12 col-sm-10 col-md-8 col-lg-5">
               <div className="card fade-in">
                 <div className="card-header text-center">
-                  <h4 className="mb-0">
+                  <h4 className="mb-1">
                     <i className="bi bi-person-circle me-2"></i>
                     Welcome Back
                   </h4>
+                  <p style={{ color: 'white' }}>Sign in to your ParkEase account</p>
                 </div>
                 <div className="card-body p-4">
                   {error && <ErrorAlert message={error} onDismiss={() => setError('')} />}
@@ -122,17 +129,25 @@ const LoginPage = () => {
                     </button>
                   </div>
 
-                  <div className="mt-4 p-3 rounded" style={{ backgroundColor: '#ECF0F1' }}>
-                    <p className="small mb-2 fw-semibold text-center">
-                      <i className="bi bi-info-circle me-1"></i> Demo Credentials
-                    </p>
-                    <p className="small mb-0 text-center text-muted">
-                      Username: demo
-                      <br />
-                      Admin Username: admin
-                      <br />
-                      Password: any password
-                    </p>
+                  <div className="text-center mt-2">
+                    <button
+                      className="btn btn-link text-muted small p-0"
+                      onClick={() => navigate('/forgot-password')}
+                    >
+                      Forgot Password?
+                    </button>
+                  </div>
+
+                  <hr className="my-3" />
+
+                  <div className="text-center">
+                    <button
+                      className="btn btn-outline-dark btn-sm"
+                      onClick={() => navigate('/admin/login')}
+                    >
+                      <i className="bi bi-shield-lock me-1"></i>
+                      Admin Login
+                    </button>
                   </div>
                 </div>
               </div>

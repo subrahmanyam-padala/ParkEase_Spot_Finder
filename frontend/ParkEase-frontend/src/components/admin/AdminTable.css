@@ -1,0 +1,89 @@
+.table-responsive {
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.48);
+  background: linear-gradient(140deg, rgba(255, 255, 255, 0.64), rgba(255, 255, 255, 0.44));
+  box-shadow: 0 12px 30px rgba(31, 45, 61, 0.1);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  overflow: hidden;
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
+}
+
+.table-responsive:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 16px 34px rgba(31, 45, 61, 0.16);
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin-bottom: 0;
+}
+
+.admin-table thead th {
+  background: rgba(226, 236, 249, 0.82);
+  color: #17314f;
+  font-size: 0.93rem;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  font-weight: 700;
+  border: none;
+  padding: 1rem 0.9rem;
+}
+
+.admin-table th,
+.admin-table td {
+  vertical-align: middle;
+  border: none;
+}
+
+.admin-table tbody tr {
+  transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.admin-table tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.admin-table tbody tr:nth-child(odd) {
+  background: rgba(255, 255, 255, 0.48);
+}
+
+.admin-table tbody tr:hover {
+  transform: scale(1.006);
+  background: rgba(219, 234, 254, 0.62);
+}
+
+.admin-table td {
+  color: #0f2742;
+  font-size: 1rem;
+  font-weight: 500;
+  padding: 1rem 0.9rem;
+}
+
+.admin-table .btn {
+  border-radius: 10px;
+  font-weight: 600;
+  padding: 0.36rem 0.78rem;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.admin-table .btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 16px rgba(17, 24, 39, 0.18);
+}
+
+.empty-state {
+  padding: 60px 24px;
+  text-align: center;
+  color: #355071;
+  font-size: 1.16rem;
+  font-weight: 600;
+  border-radius: 16px;
+  background: linear-gradient(140deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.45));
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 12px 30px rgba(31, 45, 61, 0.1);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}

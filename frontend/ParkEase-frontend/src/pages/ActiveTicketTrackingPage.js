@@ -1,7 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useApp } from '../context/AppContext';
+import React, { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { getMyActiveBookings, getMyBookings } from '../utils/api';
 import { Navbar, Footer } from '../components';
+import BottomNav from '../components/BottomNav';
 
 const formatDuration = (milliseconds) => {
   if (milliseconds <= 0) {
@@ -14,38 +15,104 @@ const formatDuration = (milliseconds) => {
   return `${hours}h ${minutes}m`;
 };
 
-const getExpiryDate = (booking) => {
-  if (booking.expiresAt) {
-    return new Date(booking.expiresAt);
-  }
-  if (booking.createdAt && booking.duration) {
-    return new Date(new Date(booking.createdAt).getTime() + booking.duration * 60 * 60 * 1000);
-  }
-  return new Date();
-};
-
 const ActiveTicketTrackingPage = () => {
-  const { bookings } = useApp();
   const navigate = useNavigate();
+  const location = useLocation();
   const [now, setNow] = useState(new Date());
+  const [activeBooking, setActiveBooking] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  const activeBooking = useMemo(() => {
-    const paidBookings = bookings.filter((booking) => booking.paid);
-    const validPaidBookings = paidBookings.filter(
-      (booking) => getExpiryDate(booking).getTime() > Date.now()
-    );
+  useEffect(() => {
+    loadActiveBooking();
+  }, []);
 
-    if (validPaidBookings.length > 0) {
-      return validPaidBookings[validPaidBookings.length - 1];
+  const loadActiveBooking = async () => {
+    try {
+      setLoading(true);
+      const selectedBookingId = location.state?.bookingId;
+
+      if (selectedBookingId) {
+        const allRes = await getMyBookings();
+        const allBookings = Array.isArray(allRes.data) ? allRes.data : [];
+        const selected = allBookings.find((b) => String(b.bookingId || b.id) === String(selectedBookingId));
+        if (selected) {
+          setActiveBooking(selected);
+          setError('');
+          return;
+        }
+      }
+
+      const res = await getMyActiveBookings();
+
+      console.log('[ActiveTicket] raw response:', res);
+      console.log('[ActiveTicket] res.data:', res.data);
+
+      // Handle: array, { data: [...] }, or a single object
+      let payload;
+      if (Array.isArray(res.data)) {
+        payload = res.data;
+      } else if (res.data && Array.isArray(res.data.data)) {
+        payload = res.data.data;
+      } else if (res.data && typeof res.data === 'object' && !Array.isArray(res.data)) {
+        // Single booking object returned directly
+        payload = [res.data];
+      } else {
+        payload = [];
+      }
+
+      console.log('[ActiveTicket] normalized payload:', payload);
+
+      // Blacklist-based: show everything that is NOT finished/cancelled
+      const inactiveStatuses = ['COMPLETED', 'CANCELLED', 'EXPIRED'];
+      const activeOnes = payload.filter(
+        (b) => b && !inactiveStatuses.includes((b.status || '').toUpperCase())
+      );
+
+      console.log('[ActiveTicket] activeOnes after filter:', activeOnes);
+
+      // Sort by startTime ascending, pick last (most recent)
+      const sorted = activeOnes.sort((a, b) => {
+        const aTime = a.startTime ? new Date(a.startTime).getTime() : 0;
+        const bTime = b.startTime ? new Date(b.startTime).getTime() : 0;
+        return aTime - bTime;
+      });
+
+      if (sorted.length > 0) {
+        console.log('[ActiveTicket] setting activeBooking:', sorted[sorted.length - 1]);
+        setActiveBooking(sorted[sorted.length - 1]);
+      } else {
+        setActiveBooking(null);
+      }
+    } catch (err) {
+      console.error('[ActiveTicket] fetch error:', err);
+      setError('Could not load your active booking. Please try again.');
+      setActiveBooking(null);
+    } finally {
+      setLoading(false);
     }
+  };
 
-    return paidBookings.length > 0 ? paidBookings[paidBookings.length - 1] : null;
-  }, [bookings]);
+  if (loading) {
+    return (
+      <div className="min-vh-100 d-flex flex-column" style={{ backgroundColor: '#ECF0F1' }}>
+        <Navbar />
+        <div className="main-content flex-grow-1 d-flex align-items-center justify-content-center py-4">
+          <div className="text-center">
+            <div className="spinner-border text-primary mb-3" role="status"></div>
+            <p className="text-muted">Loading your active ticket...</p>
+          </div>
+        </div>
+        <Footer />
+        <BottomNav />
+      </div>
+    );
+  }
 
   if (!activeBooking) {
     return (
@@ -54,9 +121,11 @@ const ActiveTicketTrackingPage = () => {
         <div className="main-content flex-grow-1 d-flex align-items-center justify-content-center py-4">
           <div className="card p-4 text-center" style={{ maxWidth: '520px', width: '100%' }}>
             <i className="bi bi-ticket-perforated" style={{ fontSize: '3rem', color: '#00C4B4' }}></i>
-            <h4 className="mt-3 mb-2" style={{ color: '#2C3E50' }}>No Active Ticket</h4>
+            <h4 className="mt-3 mb-2" style={{ color: '#2C3E50' }}>
+              {error ? 'Oops!' : 'No Active Ticket'}
+            </h4>
             <p className="text-muted mb-4">
-              You do not have an active paid ticket right now. Book and complete payment first.
+              {error || 'You don\'t have an active parking session right now. Book a spot to get started!'}
             </p>
             <button className="btn btn-primary" onClick={() => navigate('/book')}>
               <i className="bi bi-calendar-plus me-2"></i>
@@ -65,17 +134,28 @@ const ActiveTicketTrackingPage = () => {
           </div>
         </div>
         <Footer />
+        <BottomNav />
       </div>
     );
   }
 
-  const expiryDate = getExpiryDate(activeBooking);
-  const createdAt = activeBooking.createdAt ? new Date(activeBooking.createdAt) : new Date();
-  const totalDurationMs = Math.max(expiryDate.getTime() - createdAt.getTime(), 1);
-  const elapsedMs = Math.max(now.getTime() - createdAt.getTime(), 0);
-  const remainingMs = Math.max(expiryDate.getTime() - now.getTime(), 0);
+  // Calculate times using API fields (startTime, endTime)
+  const startTime = activeBooking.startTime ? new Date(activeBooking.startTime) : new Date();
+  const endTime = activeBooking.endTime ? new Date(activeBooking.endTime) : new Date();
+  const totalDurationMs = Math.max(endTime.getTime() - startTime.getTime(), 1);
+  const elapsedMs = Math.max(now.getTime() - startTime.getTime(), 0);
+  const remainingMs = Math.max(endTime.getTime() - now.getTime(), 0);
   const progress = Math.min((elapsedMs / totalDurationMs) * 100, 100);
-  const isExpired = remainingMs === 0;
+  const isExpired = remainingMs <= 0;
+  const isCheckedIn = activeBooking.status === 'CHECKED_IN';
+
+  // Get status display
+  const getStatusText = () => {
+    if (activeBooking.status === 'CHECKED_IN') return 'Parked';
+    if (activeBooking.status === 'PAID') return 'Ready to Enter';
+    if (isExpired) return 'Time Up';
+    return 'Active';
+  };
 
   return (
     <div className="min-vh-100 d-flex flex-column" style={{ backgroundColor: '#ECF0F1' }}>
@@ -95,29 +175,35 @@ const ActiveTicketTrackingPage = () => {
             <div className="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
               <span>
                 <i className="bi bi-ticket-perforated me-2"></i>
-                Ticket #{activeBooking.id}
+                {activeBooking.ticketNumber || `Booking #${activeBooking.bookingId}`}
               </span>
               <span className={`status-badge ${isExpired ? 'status-pending' : 'status-active'}`}>
-                {isExpired ? 'Expired' : 'Active'}
+                {getStatusText()}
               </span>
             </div>
             <div className="card-body">
               <div className="row g-3">
                 <div className="col-6 col-md-3">
-                  <p className="text-muted small mb-1">Slot</p>
-                  <p className="fw-bold fs-4 mb-0" style={{ color: '#00C4B4' }}>{activeBooking.slot}</p>
+                  <p className="text-muted small mb-1">Spot</p>
+                  <p className="fw-bold fs-4 mb-0" style={{ color: '#00C4B4' }}>
+                    {activeBooking.spotLabel || '--'}
+                  </p>
                 </div>
                 <div className="col-6 col-md-3">
-                  <p className="text-muted small mb-1">Amount</p>
-                  <p className="fw-bold fs-5 mb-0">Rs {activeBooking.amount}</p>
+                  <p className="text-muted small mb-1">Amount Paid</p>
+                  <p className="fw-bold fs-5 mb-0">₹{activeBooking.totalAmount || 0}</p>
                 </div>
                 <div className="col-6 col-md-3">
                   <p className="text-muted small mb-1">Entry Time</p>
-                  <p className="fw-bold mb-0">{createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                  <p className="fw-bold mb-0">
+                    {startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </p>
                 </div>
                 <div className="col-6 col-md-3">
                   <p className="text-muted small mb-1">Exit By</p>
-                  <p className="fw-bold mb-0">{expiryDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                  <p className="fw-bold mb-0">
+                    {endTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </p>
                 </div>
               </div>
             </div>
@@ -153,13 +239,15 @@ const ActiveTicketTrackingPage = () => {
                     <div className="col-6 col-md-4">
                       <div className="tracking-metric">
                         <p className="text-muted small mb-1">Duration</p>
-                        <p className="fw-bold mb-0">{activeBooking.duration}h</p>
+                        <p className="fw-bold mb-0">{activeBooking.durationHours || 1}h</p>
                       </div>
                     </div>
                     <div className="col-12 col-md-4">
                       <div className="tracking-metric">
-                        <p className="text-muted small mb-1">Gate Status</p>
-                        <p className="fw-bold mb-0">{isExpired ? 'Exit Required' : 'Inside Parking'}</p>
+                        <p className="text-muted small mb-1">Status</p>
+                        <p className="fw-bold mb-0">
+                          {isCheckedIn ? 'Inside Parking' : isExpired ? 'Time to Exit' : 'Ready to Enter'}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -169,28 +257,35 @@ const ActiveTicketTrackingPage = () => {
                       <i className="bi bi-check-circle-fill"></i>
                       <div>
                         <p className="fw-bold mb-0">Booked</p>
-                        <small className="text-muted">Slot reserved successfully</small>
+                        <small className="text-muted">Spot reserved successfully</small>
                       </div>
                     </div>
                     <div className="timeline-step done">
                       <i className="bi bi-check-circle-fill"></i>
                       <div>
                         <p className="fw-bold mb-0">Payment Complete</p>
-                        <small className="text-muted">Ticket activated</small>
+                        <small className="text-muted">Ready to enter parking</small>
                       </div>
                     </div>
-                    <div className={`timeline-step ${isExpired ? 'done' : 'live'}`}>
-                      <i className={`bi ${isExpired ? 'bi-check-circle-fill' : 'bi-record-circle-fill'}`}></i>
+                    <div className={`timeline-step ${isCheckedIn ? 'done' : activeBooking.status === 'PAID' ? 'live' : ''}`}>
+                      <i className={`bi ${isCheckedIn ? 'bi-check-circle-fill' : activeBooking.status === 'PAID' ? 'bi-record-circle-fill' : 'bi-circle'}`}></i>
+                      <div>
+                        <p className="fw-bold mb-0">Entry Gate</p>
+                        <small className="text-muted">{isCheckedIn ? 'Scanned and entered' : 'Show QR at gate to enter'}</small>
+                      </div>
+                    </div>
+                    <div className={`timeline-step ${isCheckedIn ? 'live' : ''}`}>
+                      <i className={`bi ${isCheckedIn ? 'bi-record-circle-fill' : 'bi-circle'}`}></i>
                       <div>
                         <p className="fw-bold mb-0">Vehicle Parked</p>
-                        <small className="text-muted">Real-time session running</small>
+                        <small className="text-muted">{isCheckedIn ? 'Your car is parked' : 'Park at your spot'}</small>
                       </div>
                     </div>
-                    <div className={`timeline-step ${isExpired ? 'live' : ''}`}>
-                      <i className={`bi ${isExpired ? 'bi-record-circle-fill' : 'bi-circle'}`}></i>
+                    <div className="timeline-step">
+                      <i className="bi bi-circle"></i>
                       <div>
                         <p className="fw-bold mb-0">Exit Gate</p>
-                        <small className="text-muted">Complete your parking cycle</small>
+                        <small className="text-muted">Scan QR to exit when done</small>
                       </div>
                     </div>
                   </div>
@@ -202,23 +297,27 @@ const ActiveTicketTrackingPage = () => {
               <div className="card mb-4 fade-in">
                 <div className="card-header">
                   <i className="bi bi-pin-map me-2"></i>
-                  Location
+                  Your Parking Spot
                 </div>
                 <div className="card-body">
                   <div className="tracking-map">
-                    <div className="map-floor">Ground & Level 1</div>
+                    <div className="map-floor">{activeBooking.zone || 'Ground Floor'}</div>
                     <div className="map-slot">
-                      <span className="slot-pill">{activeBooking.slot}</span>
+                      <span className="slot-pill">{activeBooking.spotLabel || '--'}</span>
                     </div>
-                    <small className="text-muted">ABC City Mall, Andheri East</small>
+                    <div className="small mt-2" style={{ color: '#334155' }}>
+                      <i className="bi bi-signpost-split me-1"></i>
+                      {activeBooking.navigationPath || `Follow parking signs to ${activeBooking.spotLabel || 'your slot'}`}
+                    </div>
+                    <small className="text-muted">ParkEase Mall Parking</small>
                   </div>
                 </div>
               </div>
 
               <div className="d-grid gap-2 fade-in">
-                <button className="btn btn-primary" onClick={() => navigate(`/ticket/${activeBooking.id}`)}>
+                <button className="btn btn-primary" onClick={() => navigate(`/ticket/${activeBooking.bookingId}`)}>
                   <i className="bi bi-qr-code me-2"></i>
-                  View Full Ticket
+                  View QR Ticket
                 </button>
                 <button className="btn btn-outline-primary" onClick={() => navigate('/dashboard')}>
                   <i className="bi bi-arrow-left me-2"></i>
@@ -231,6 +330,7 @@ const ActiveTicketTrackingPage = () => {
       </div>
 
       <Footer />
+      <BottomNav />
     </div>
   );
 };

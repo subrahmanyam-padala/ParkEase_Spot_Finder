@@ -1,4 +1,4 @@
- package com.parkeasy.ParkEase_backend.config;
+package com.parkeasy.ParkEase_backend.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -7,6 +7,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
 
 import java.util.Arrays;
+import java.util.List;
 
 @Configuration
 public class CorsConfig {
@@ -16,8 +17,11 @@ public class CorsConfig {
 
         CorsConfiguration config = new CorsConfiguration();
 
-        // Allow your React frontend
-        config.setAllowedOrigins(Arrays.asList("http://localhost:3000"));
+        // Allow React frontend from localhost and LAN IPs (for mobile access)
+        config.setAllowedOriginPatterns(List.of(
+                "http://localhost:*", "https://localhost:*",
+                "http://10.*:*", "https://10.*:*",
+                "http://192.168.*:*", "https://192.168.*:*"));
 
         // Allow HTTP methods
         config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));

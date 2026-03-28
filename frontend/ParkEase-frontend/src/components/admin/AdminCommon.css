@@ -1,0 +1,77 @@
+/* shared admin UI styles and variables */
+:root {
+  --admin-bg: #eef3fa;
+  --admin-sidebar-bg: #1f2329;
+  --admin-sidebar-color: #d1d5db;
+  --admin-sidebar-hover: #2c3138;
+  --admin-sidebar-active: #b08968;
+  --admin-content-padding: 2rem;
+  --admin-font: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  --admin-glass: rgba(255, 255, 255, 0.62);
+  --admin-glass-border: rgba(255, 255, 255, 0.5);
+  --admin-shadow-soft: 0 10px 30px rgba(31, 45, 61, 0.08);
+  --admin-shadow-hover: 0 16px 35px rgba(31, 45, 61, 0.14);
+}
+
+/* generic card used for KPIs */
+.kpi-card {
+  flex: 1 1 190px;
+  min-width: 180px;
+  background: linear-gradient(135deg, var(--admin-glass), rgba(255, 255, 255, 0.42));
+  border: 1px solid var(--admin-glass-border);
+  border-radius: 18px;
+  box-shadow: var(--admin-shadow-soft);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  padding: 22px 18px;
+  text-align: center;
+  font-weight: 700;
+  transition: transform 0.24s ease, box-shadow 0.24s ease;
+}
+
+.kpi-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--admin-shadow-hover);
+}
+
+/* placeholder boxes for charts/tables */
+.chart-box,
+.table-placeholder {
+  height: 240px;
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.74), rgba(255, 255, 255, 0.45));
+  border: 1px dashed #b8c4d4;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #4b5563;
+}
+
+.glass-panel {
+  background: linear-gradient(135deg, var(--admin-glass), rgba(255, 255, 255, 0.42));
+  border: 1px solid var(--admin-glass-border);
+  border-radius: 16px;
+  box-shadow: var(--admin-shadow-soft);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* responsive helpers */
+@media (max-width: 768px) {
+  .kpi-cards {
+    flex-direction: column;
+  }
+
+  .admin-sidebar {
+    width: 60px;
+  }
+  .admin-sidebar a {
+    text-align: center;
+    padding: 0.8rem;
+    font-size: 0.9rem;
+  }
+
+  .admin-body {
+    flex-direction: column;
+  }
+}
