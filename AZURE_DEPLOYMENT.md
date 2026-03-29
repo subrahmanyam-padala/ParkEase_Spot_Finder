@@ -39,6 +39,10 @@ Optional logging settings:
 - `LOG_LEVEL_WEB=INFO`
 - `LOG_LEVEL_MAIL=INFO`
 
+Azure MySQL note:
+- For Azure Database for MySQL Flexible Server, username is usually `username@server-name`.
+- Example: `SPRING_DATASOURCE_USERNAME=parkeaseadmin@parkease-mysql-prod`.
+
 ## 3. Frontend (Azure Static Web Apps)
 
 Create Azure Static Web App and connect GitHub repo.
