@@ -16,6 +16,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Validate required secrets
+        run: |
+          if [ -z "${{ secrets.AZURE_BACKEND_APP_NAME }}" ]; then
+            echo "Missing AZURE_BACKEND_APP_NAME secret"
+            exit 1
+          fi
+          if [ -z "${{ secrets.AZURE_BACKEND_PUBLISH_PROFILE }}" ]; then
+            echo "Missing AZURE_BACKEND_PUBLISH_PROFILE secret"
+            exit 1
+          fi
+
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
@@ -23,13 +34,27 @@ jobs:
           java-version: 21
           cache: maven
 
+      - name: Make Maven wrapper executable
+        run: chmod +x backend/ParkEase-backend/mvnw
+
       - name: Build backend JAR
         working-directory: backend/ParkEase-backend
-        run: mvn -B clean package -DskipTests
+        run: ./mvnw -B clean package -DskipTests
+
+      - name: Resolve built artifact path
+        id: artifact
+        run: |
+          JAR_PATH=$(find backend/ParkEase-backend/target -maxdepth 1 -type f -name "*.jar" ! -name "*original*.jar" | head -n 1)
+          if [ -z "$JAR_PATH" ]; then
+            echo "No deployable JAR found in backend/ParkEase-backend/target"
+            ls -la backend/ParkEase-backend/target || true
+            exit 1
+          fi
+          echo "jar_path=$JAR_PATH" >> $GITHUB_OUTPUT
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
           app-name: ${{ secrets.AZURE_BACKEND_APP_NAME }}
           publish-profile: ${{ secrets.AZURE_BACKEND_PUBLISH_PROFILE }}
-          package: backend/ParkEase-backend/target/*.jar
+          package: ${{ steps.artifact.outputs.jar_path }}
