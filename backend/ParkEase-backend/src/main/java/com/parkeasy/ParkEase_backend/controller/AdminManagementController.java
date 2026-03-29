@@ -86,8 +86,7 @@ public class AdminManagementController {
 	}
 
 	@PutMapping("/refunds/{bookingId}")
-	public ResponseEntity<Map<String, Object>> updateRefundStatus(
-			@PathVariable("bookingId") Long bookingId,
+	public ResponseEntity<Map<String, Object>> updateRefundStatus(@PathVariable("bookingId") Long bookingId,
 			@RequestBody Map<String, String> payload) {
 		String status = payload.get("status");
 		return ResponseEntity.ok(adminManagementService.updateRefundStatus(bookingId, status));

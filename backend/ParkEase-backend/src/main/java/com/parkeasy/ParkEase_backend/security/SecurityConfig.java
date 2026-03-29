@@ -1,5 +1,6 @@
 package com.parkeasy.ParkEase_backend.security;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -18,6 +19,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Configuration
 @EnableWebSecurity
@@ -25,6 +27,9 @@ public class SecurityConfig {
 
 	private final JwtAuthenticationFilter jwtAuthenticationFilter;
 	private final CustomUserDetailsService userDetailsService;
+
+	@Value("${app.cors.allowed-origin-patterns:http://localhost:*,https://localhost:*}")
+	private String allowedOriginPatterns;
 
 	public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
 			CustomUserDetailsService userDetailsService) {
@@ -61,8 +66,10 @@ public class SecurityConfig {
 	@Bean
 	public CorsConfigurationSource corsConfigurationSource() {
 		CorsConfiguration configuration = new CorsConfiguration();
-		configuration.setAllowedOriginPatterns(List.of("http://localhost:*", "https://localhost:*", "http://10.*:*",
-				"https://10.*:*", "http://192.168.*:*", "https://192.168.*:*"));
+		configuration.setAllowedOriginPatterns(Arrays.stream(allowedOriginPatterns.split(","))
+				.map(String::trim)
+				.filter(s -> !s.isEmpty())
+				.collect(Collectors.toList()));
 		configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
 		configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With"));
 		configuration.setExposedHeaders(List.of("Authorization"));

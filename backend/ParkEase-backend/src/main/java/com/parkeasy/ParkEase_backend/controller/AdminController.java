@@ -17,74 +17,69 @@ import java.util.Map;
 @CrossOrigin(origins = "*")
 public class AdminController {
 
-  private final PricingService pricingService;
-  private final OccupancyService occupancyService;
+	private final PricingService pricingService;
+	private final OccupancyService occupancyService;
 
-  public AdminController(PricingService pricingService, OccupancyService occupancyService) {
-    this.pricingService = pricingService;
-    this.occupancyService = occupancyService;
-  }
+	public AdminController(PricingService pricingService, OccupancyService occupancyService) {
+		this.pricingService = pricingService;
+		this.occupancyService = occupancyService;
+	}
 
-  // --- PRICING ---
+	// --- PRICING ---
 
-  @GetMapping("/pricing")
-  public ResponseEntity<PricingConfig> getCurrentPricing() {
-    return ResponseEntity.ok(pricingService.getCurrentPricing());
-  }
+	@GetMapping("/pricing")
+	public ResponseEntity<PricingConfig> getCurrentPricing() {
+		return ResponseEntity.ok(pricingService.getCurrentPricing());
+	}
 
-  @PutMapping("/pricing")
-  public ResponseEntity<PricingConfig> updatePricing(@Valid @RequestBody PricingConfigDTO dto) {
-    return ResponseEntity.ok(pricingService.updatePricing(dto));
-  }
+	@PutMapping("/pricing")
+	public ResponseEntity<PricingConfig> updatePricing(@Valid @RequestBody PricingConfigDTO dto) {
+		return ResponseEntity.ok(pricingService.updatePricing(dto));
+	}
 
-  @GetMapping("/pricing/surge-status")
-  public ResponseEntity<Map<String, Object>> getSurgeStatus() {
-    return ResponseEntity.ok(Map.of(
-        "surgeActive", pricingService.isSurgeActive(),
-        "occupancyPercent", pricingService.getCurrentOccupancyPercent(),
-        "surgeThreshold", pricingService.getCurrentPricing().getSurgeThresholdPercent(),
-        "surgeMultiplier", pricingService.getCurrentPricing().getSurgeMultiplier()));
-  }
+	@GetMapping("/pricing/surge-status")
+	public ResponseEntity<Map<String, Object>> getSurgeStatus() {
+		return ResponseEntity.ok(Map.of("surgeActive", pricingService.isSurgeActive(), "occupancyPercent",
+				pricingService.getCurrentOccupancyPercent(), "surgeThreshold",
+				pricingService.getCurrentPricing().getSurgeThresholdPercent(), "surgeMultiplier",
+				pricingService.getCurrentPricing().getSurgeMultiplier()));
+	}
 
-  @GetMapping("/pricing/calculate")
-  public ResponseEntity<Map<String, Object>> calculatePrice(@RequestParam int hours) {
-    double baseFee = pricingService.calculateBaseFee(hours);
-    double surgeFee = pricingService.calculateSurgeFee(baseFee);
-    double total = baseFee + surgeFee;
-    return ResponseEntity.ok(Map.of(
-        "hours", hours,
-        "baseFee", baseFee,
-        "surgeFee", surgeFee,
-        "totalFee", total,
-        "surgeActive", pricingService.isSurgeActive()));
-  }
+	@GetMapping("/pricing/calculate")
+	public ResponseEntity<Map<String, Object>> calculatePrice(@RequestParam int hours) {
+		double baseFee = pricingService.calculateBaseFee(hours);
+		double surgeFee = pricingService.calculateSurgeFee(baseFee);
+		double total = baseFee + surgeFee;
+		return ResponseEntity.ok(Map.of("hours", hours, "baseFee", baseFee, "surgeFee", surgeFee, "totalFee", total,
+				"surgeActive", pricingService.isSurgeActive()));
+	}
 
-  // --- OCCUPANCY ---
+	// --- OCCUPANCY ---
 
-  @GetMapping("/occupancy/current")
-  public ResponseEntity<Map<String, Object>> getCurrentOccupancy() {
-    return ResponseEntity.ok(occupancyService.getCurrentOccupancyStatus());
-  }
+	@GetMapping("/occupancy/current")
+	public ResponseEntity<Map<String, Object>> getCurrentOccupancy() {
+		return ResponseEntity.ok(occupancyService.getCurrentOccupancyStatus());
+	}
 
-  @GetMapping("/occupancy/history")
-  public ResponseEntity<List<OccupancyHistory>> getRecentHistory() {
-    return ResponseEntity.ok(occupancyService.getRecentHistory());
-  }
+	@GetMapping("/occupancy/history")
+	public ResponseEntity<List<OccupancyHistory>> getRecentHistory() {
+		return ResponseEntity.ok(occupancyService.getRecentHistory());
+	}
 
-  @GetMapping("/occupancy/history/{dayOfWeek}")
-  public ResponseEntity<List<OccupancyHistory>> getHistoryByDay(@PathVariable String dayOfWeek) {
-    return ResponseEntity.ok(occupancyService.getHistoryByDayOfWeek(dayOfWeek));
-  }
+	@GetMapping("/occupancy/history/{dayOfWeek}")
+	public ResponseEntity<List<OccupancyHistory>> getHistoryByDay(@PathVariable String dayOfWeek) {
+		return ResponseEntity.ok(occupancyService.getHistoryByDayOfWeek(dayOfWeek));
+	}
 
-  @GetMapping("/occupancy/predict")
-  public ResponseEntity<Map<String, Object>> predictOccupancy(
-      @RequestParam String dayOfWeek, @RequestParam int hour) {
-    return ResponseEntity.ok(occupancyService.getPredictedOccupancy(dayOfWeek, hour));
-  }
+	@GetMapping("/occupancy/predict")
+	public ResponseEntity<Map<String, Object>> predictOccupancy(@RequestParam String dayOfWeek,
+			@RequestParam int hour) {
+		return ResponseEntity.ok(occupancyService.getPredictedOccupancy(dayOfWeek, hour));
+	}
 
-  @PostMapping("/occupancy/record")
-  public ResponseEntity<Map<String, String>> recordNow() {
-    occupancyService.recordCurrentOccupancy();
-    return ResponseEntity.ok(Map.of("message", "Occupancy recorded successfully"));
-  }
+	@PostMapping("/occupancy/record")
+	public ResponseEntity<Map<String, String>> recordNow() {
+		occupancyService.recordCurrentOccupancy();
+		return ResponseEntity.ok(Map.of("message", "Occupancy recorded successfully"));
+	}
 }
