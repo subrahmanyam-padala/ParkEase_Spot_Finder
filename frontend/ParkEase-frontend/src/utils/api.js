@@ -1,7 +1,11 @@
 import axios from 'axios';
 
 const API_HOST = window.location.hostname;
-const API_BASE = `http://${API_HOST}:8080/api`;
+const API_BASE =
+  process.env.REACT_APP_API_BASE_URL
+  || (process.env.NODE_ENV === 'production'
+    ? `https://${API_HOST}/api`
+    : `http://${API_HOST}:8080/api`);
 
 const API = axios.create({
   baseURL: API_BASE,
@@ -57,6 +61,10 @@ export const cancelBooking = (id) => API.post(`/bookings/${id}/cancel`);
 /* ==================== PAYMENTS ==================== */
 export const createPaymentOrder = (bookingId, paymentMethod) =>
   API.post('/payments/create-order', { bookingId, paymentMethod });
+export const createOverstayPaymentOrder = (bookingId, paymentMethod) =>
+  API.post('/payments/create-overstay-order', { bookingId, paymentMethod });
+export const createExtensionPaymentOrder = (bookingId, extensionHours, paymentMethod = 'UPI') =>
+  API.post('/payments/create-extension-order', { bookingId, extensionHours, paymentMethod });
 export const verifyPayment = (data) => API.post('/payments/verify', data);
 export const getMyPayments = () => API.get('/payments/my-payments');
 export const getPaymentsByBooking = (bookingId) => API.get(`/payments/booking/${bookingId}`);

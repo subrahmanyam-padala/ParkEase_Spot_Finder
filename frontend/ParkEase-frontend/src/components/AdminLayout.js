@@ -179,6 +179,7 @@ const AdminLayout = () => {
           </NavLink>
           <NavLink to="/admin/admin-users">Admin Users</NavLink>
           <NavLink to="/admin/reports">Reports</NavLink>
+          <NavLink to="/admin/refunds">Refunds</NavLink>
           <NavLink to="/admin/complaints">Complaints</NavLink>
         </nav>
 

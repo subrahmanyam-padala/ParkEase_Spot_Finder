@@ -122,6 +122,7 @@ const AdminBookingsPage = () => {
                   <th>Duration</th>
                   <th>Amount</th>
                   <th>Status</th>
+                  <th>Refund</th>
                   <th>Payment Method</th>
                   <th>Valid Until</th>
                   <th>Booked At</th>
@@ -129,7 +130,7 @@ const AdminBookingsPage = () => {
               </thead>
               <tbody>
                 {filtered.length === 0 ? (
-                  <tr><td colSpan="12" className="text-center text-muted py-4">No bookings found in last 3 days</td></tr>
+                  <tr><td colSpan="13" className="text-center text-muted py-4">No bookings found in last 3 days</td></tr>
                 ) : filtered.map((b) => (
                   <tr key={b.id}>
                     <td>#{b.id}</td>
@@ -144,6 +145,13 @@ const AdminBookingsPage = () => {
                       <span className="badge" style={{ backgroundColor: statusColor(b.status), color: '#fff' }}>
                         {b.status || (b.paid ? 'PAID' : 'PENDING')}
                       </span>
+                    </td>
+                    <td>
+                      {b.refundStatus && b.refundStatus !== 'NOT_APPLICABLE' ? (
+                        <span className="badge" style={{ backgroundColor: b.refundStatus === 'REQUESTED' ? '#f59e0b' : '#22c55e', color: '#fff' }}>
+                          {b.refundStatus}
+                        </span>
+                      ) : 'N/A'}
                     </td>
                     <td>{b.paymentMethod || 'N/A'}</td>
                     <td><small>{parseBackendDate(b.validUntil) ? parseBackendDate(b.validUntil).toLocaleString() : 'N/A'}</small></td>

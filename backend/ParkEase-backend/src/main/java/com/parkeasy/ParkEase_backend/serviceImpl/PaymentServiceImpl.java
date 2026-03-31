@@ -25,6 +25,8 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.time.format.DateTimeFormatter;
 import java.util.Base64;
 import java.util.List;
@@ -34,6 +36,10 @@ import javax.crypto.spec.SecretKeySpec;
 @Service
 public class PaymentServiceImpl implements PaymentService {
 	private static final String RAZORPAY_ORDERS_URL = "https://api.razorpay.com/v1/orders";
+	private static final double DEFAULT_SPOT_PRICE_PER_HOUR = 75.0;
+	private static final double OVERSTAY_MULTIPLIER = 1.5;
+	private static final int MIN_EXTENSION_HOURS = 1;
+	private static final int MAX_EXTENSION_HOURS = 8;
 
 	private final PaymentRepository paymentRepository;
 	private final BookingRepository bookingRepository;
@@ -104,6 +110,130 @@ public class PaymentServiceImpl implements PaymentService {
 
 	@Override
 	@Transactional
+	public PaymentResponseDTO createOverstayPaymentOrder(Integer userId, PaymentRequestDTO requestDTO) {
+		Users user = usersRepository.findById(userId)
+				.orElseThrow(() -> new RuntimeException("User not found with ID: " + userId));
+
+		Booking booking = bookingRepository.findById(requestDTO.getBookingId())
+				.orElseThrow(() -> new RuntimeException("Booking not found with ID: " + requestDTO.getBookingId()));
+
+		if (booking.getUser() == null || !booking.getUser().getUserId().equals(userId)) {
+			throw new RuntimeException("This overstay payment does not belong to the logged in user");
+		}
+
+		String bookingStatus = booking.getStatus() == null ? "" : booking.getStatus().toUpperCase();
+		if (!"OVERSTAY".equals(bookingStatus)) {
+			if ("CHECKED_IN".equals(bookingStatus) && booking.getEndTime() != null
+					&& LocalDateTime.now().isAfter(booking.getEndTime())) {
+				long diffMinutes = ChronoUnit.MINUTES.between(booking.getEndTime(), LocalDateTime.now());
+				int overstayHours = (int) Math.ceil(diffMinutes / 60.0);
+				if (overstayHours < 1) {
+					overstayHours = 1;
+				}
+
+				double spotPricePerHour = booking.getParkingSpot() != null
+						&& booking.getParkingSpot().getPricePerHour() != null
+						&& booking.getParkingSpot().getPricePerHour() > 0
+								? booking.getParkingSpot().getPricePerHour()
+								: DEFAULT_SPOT_PRICE_PER_HOUR;
+				double overstayFee = overstayHours * spotPricePerHour * OVERSTAY_MULTIPLIER;
+
+				booking.setStatus("OVERSTAY");
+				booking.setOverstayFee(overstayFee);
+				bookingRepository.save(booking);
+			} else {
+				throw new RuntimeException("Overstay payment can be created only for OVERSTAY tickets");
+			}
+		}
+
+		double overstayFee = booking.getOverstayFee() == null ? 0 : booking.getOverstayFee();
+		if (overstayFee <= 0) {
+			throw new RuntimeException("Overstay amount is not available for this booking");
+		}
+
+		String razorpayOrderId = createRazorpayOrder(overstayFee, booking.getBookingId(), "overstay_", "overstay");
+
+		Payment payment = new Payment();
+		payment.setBooking(booking);
+		payment.setUser(user);
+		payment.setAmount(overstayFee);
+		payment.setPaymentMethod("RAZORPAY_OVERSTAY");
+		payment.setRazorpayOrderId(razorpayOrderId);
+		payment.setStatus("PENDING");
+		Payment savedPayment = paymentRepository.save(payment);
+
+		PaymentResponseDTO response = new PaymentResponseDTO();
+		response.setPaymentId(savedPayment.getPaymentId());
+		response.setBookingId(booking.getBookingId());
+		response.setAmount(overstayFee);
+		response.setRazorpayOrderId(razorpayOrderId);
+		response.setRazorpayKeyId(razorpayKeyId);
+		response.setStatus("PENDING");
+		response.setMessage("Overstay payment order created successfully.");
+		return response;
+	}
+
+	@Override
+	@Transactional
+	public PaymentResponseDTO createExtensionPaymentOrder(Integer userId, PaymentRequestDTO requestDTO) {
+		Users user = usersRepository.findById(userId)
+				.orElseThrow(() -> new RuntimeException("User not found with ID: " + userId));
+
+		Booking booking = bookingRepository.findById(requestDTO.getBookingId())
+				.orElseThrow(() -> new RuntimeException("Booking not found with ID: " + requestDTO.getBookingId()));
+
+		if (booking.getUser() == null || !booking.getUser().getUserId().equals(userId)) {
+			throw new RuntimeException("This extension payment does not belong to the logged in user");
+		}
+
+		String bookingStatus = booking.getStatus() == null ? "" : booking.getStatus().toUpperCase();
+		if (!("PAID".equals(bookingStatus) || "CHECKED_IN".equals(bookingStatus))) {
+			throw new RuntimeException("Extension is allowed only for active paid tickets");
+		}
+
+		LocalDateTime now = LocalDateTime.now();
+		if (booking.getEndTime() == null || !now.isBefore(booking.getEndTime())) {
+			throw new RuntimeException("Ticket already expired. Please use overstay payment flow.");
+		}
+
+		Integer extensionHours = requestDTO.getExtensionHours();
+		if (extensionHours == null || extensionHours < MIN_EXTENSION_HOURS || extensionHours > MAX_EXTENSION_HOURS) {
+			throw new RuntimeException(
+					"Extension hours must be between " + MIN_EXTENSION_HOURS + " and " + MAX_EXTENSION_HOURS);
+		}
+
+		double spotPricePerHour = booking.getParkingSpot() != null
+				&& booking.getParkingSpot().getPricePerHour() != null
+				&& booking.getParkingSpot().getPricePerHour() > 0
+						? booking.getParkingSpot().getPricePerHour()
+						: DEFAULT_SPOT_PRICE_PER_HOUR;
+		double extensionFee = spotPricePerHour * extensionHours;
+
+		String razorpayOrderId = createRazorpayOrder(extensionFee, booking.getBookingId(), "extend_", "extension");
+
+		Payment payment = new Payment();
+		payment.setBooking(booking);
+		payment.setUser(user);
+		payment.setAmount(extensionFee);
+		payment.setPaymentMethod("RAZORPAY_EXTENSION");
+		payment.setExtensionHours(extensionHours);
+		payment.setRazorpayOrderId(razorpayOrderId);
+		payment.setStatus("PENDING");
+		Payment savedPayment = paymentRepository.save(payment);
+
+		PaymentResponseDTO response = new PaymentResponseDTO();
+		response.setPaymentId(savedPayment.getPaymentId());
+		response.setBookingId(booking.getBookingId());
+		response.setAmount(extensionFee);
+		response.setRazorpayOrderId(razorpayOrderId);
+		response.setRazorpayKeyId(razorpayKeyId);
+		response.setStatus("PENDING");
+		response.setMessage("Extension payment order created successfully.");
+		return response;
+	}
+
+	@Override
+	@Transactional
 	public PaymentResponseDTO verifyPayment(PaymentVerifyDTO verifyDTO) {
 		Payment payment = paymentRepository.findByRazorpayOrderId(verifyDTO.getRazorpayOrderId()).orElseThrow(
 				() -> new RuntimeException("Payment not found for order: " + verifyDTO.getRazorpayOrderId()));
@@ -121,15 +251,37 @@ public class PaymentServiceImpl implements PaymentService {
 		payment.setRazorpaySignature(verifyDTO.getRazorpaySignature());
 		payment.setTransactionId(verifyDTO.getRazorpayPaymentId());
 		payment.setStatus("SUCCESS");
+		payment.setRefundStatus("NOT_REQUESTED");
+		payment.setRefundRequestedAt(null);
 		paymentRepository.save(payment);
 
-		// Update booking status to PAID
+		// Update booking status based on payment flow type.
 		Booking booking = payment.getBooking();
-		booking.setStatus("PAID");
+		if ("RAZORPAY_OVERSTAY".equalsIgnoreCase(payment.getPaymentMethod())) {
+			booking.setStatus("OVERSTAY_PAID");
+		} else if ("RAZORPAY_EXTENSION".equalsIgnoreCase(payment.getPaymentMethod())) {
+			if (booking.getEndTime() == null || !LocalDateTime.now().isBefore(booking.getEndTime())) {
+				throw new RuntimeException("Ticket already expired. Extension payment cannot be applied.");
+			}
+			int extensionHours = payment.getExtensionHours() == null ? 0 : payment.getExtensionHours();
+			if (extensionHours <= 0) {
+				throw new RuntimeException("Invalid extension hours on payment record");
+			}
+			booking.setEndTime(booking.getEndTime().plusHours(extensionHours));
+			double existingTotal = booking.getTotalAmount() == null ? 0 : booking.getTotalAmount();
+			double extensionAmount = payment.getAmount() == null ? 0 : payment.getAmount();
+			booking.setTotalAmount(existingTotal + extensionAmount);
+		} else {
+			booking.setStatus("PAID");
+		}
 		bookingRepository.save(booking);
 
-		// Generate QR ticket and send confirmation email after successful payment
-		sendQrTicketEmail(booking);
+		// Generate QR ticket and send confirmation email after primary booking payment.
+		if ("RAZORPAY_EXTENSION".equalsIgnoreCase(payment.getPaymentMethod())) {
+			sendExtensionTicketEmail(booking, payment.getAmount(), payment.getExtensionHours());
+		} else if (!"RAZORPAY_OVERSTAY".equalsIgnoreCase(payment.getPaymentMethod())) {
+			sendQrTicketEmail(booking);
+		}
 
 		PaymentResponseDTO response = new PaymentResponseDTO();
 		response.setPaymentId(payment.getPaymentId());
@@ -138,14 +290,18 @@ public class PaymentServiceImpl implements PaymentService {
 		response.setRazorpayOrderId(payment.getRazorpayOrderId());
 		response.setRazorpayPaymentId(payment.getRazorpayPaymentId());
 		response.setStatus("SUCCESS");
-		response.setMessage("Payment verified successfully.");
+		response.setMessage("RAZORPAY_OVERSTAY".equalsIgnoreCase(payment.getPaymentMethod())
+				? "Overstay payment verified successfully. Exit QR is now enabled."
+				: "RAZORPAY_EXTENSION".equalsIgnoreCase(payment.getPaymentMethod())
+						? "Ticket extended successfully. Expiration time has been updated."
+						: "Payment verified successfully.");
 
 		return response;
 	}
 
-	private String createRazorpayOrder(Booking booking) {
+	private String createRazorpayOrder(double amount, Long bookingId, String receiptPrefix, String context) {
 		try {
-			long amountInPaise = Math.round(booking.getTotalAmount() * 100);
+			long amountInPaise = Math.round(amount * 100);
 			if (amountInPaise <= 0) {
 				throw new RuntimeException("Amount must be greater than zero");
 			}
@@ -153,7 +309,8 @@ public class PaymentServiceImpl implements PaymentService {
 			String payload = objectMapper.writeValueAsString(java.util.Map.of(
 					"amount", amountInPaise,
 					"currency", "INR",
-					"receipt", "booking_" + booking.getBookingId()));
+					"receipt", receiptPrefix + bookingId + "_" + System.currentTimeMillis(),
+					"notes", java.util.Map.of("bookingId", String.valueOf(bookingId), "context", context)));
 
 			String auth = Base64.getEncoder().encodeToString(
 					(razorpayKeyId + ":" + razorpayKeySecret).getBytes(StandardCharsets.UTF_8));
@@ -181,6 +338,10 @@ public class PaymentServiceImpl implements PaymentService {
 		} catch (Exception e) {
 			throw new RuntimeException("Unable to create Razorpay order", e);
 		}
+	}
+
+	private String createRazorpayOrder(Booking booking) {
+		return createRazorpayOrder(booking.getTotalAmount(), booking.getBookingId(), "booking_", "booking");
 	}
 
 	private boolean isValidRazorpaySignature(String orderId, String paymentId, String signature) {
@@ -305,5 +466,49 @@ public class PaymentServiceImpl implements PaymentService {
 								+ "<img src='cid:qrcode_image' alt='QR Code' style='width: 200px; height: 200px; border: 2px solid #2a5298; border-radius: 8px;' />"
 								+ "<p style='color: #888; font-size: 12px;'>Show this QR code at the parking entrance</p>"
 								+ "</div>");
+	}
+
+	private void sendExtensionTicketEmail(Booking booking, Double extensionAmount, Integer extensionHours) {
+		try {
+			Users user = booking.getUser();
+			ParkingSpot spot = booking.getParkingSpot();
+			String body = """
+					<html>
+					<body style=\"font-family: Arial, sans-serif; background: #f4f6f8; padding: 20px;\">
+					<div style=\"max-width: 620px; margin: auto; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1);\">
+					  <div style=\"background: linear-gradient(135deg, #0f766e, #0ea5a4); padding: 24px; text-align: center; color: #fff;\">
+					    <h1 style=\"margin: 0;\">🅿️ ParkEase</h1>
+					    <p style=\"margin: 8px 0 0 0;\">Ticket Extended Successfully</p>
+					  </div>
+					  <div style=\"padding: 24px;\">
+					    <h2 style=\"margin-top: 0;\">Hello, %s!</h2>
+					    <p>Your existing ticket has been extended. The same ticket number remains valid.</p>
+					    <table style=\"width: 100%%; border-collapse: collapse; margin: 18px 0;\">
+					      <tr><td style=\"padding: 10px; border-bottom: 1px solid #eee; font-weight: bold;\">Ticket No</td><td style=\"padding: 10px; border-bottom: 1px solid #eee;\">%s</td></tr>
+					      <tr><td style=\"padding: 10px; border-bottom: 1px solid #eee; font-weight: bold;\">Spot</td><td style=\"padding: 10px; border-bottom: 1px solid #eee;\">%s (%s)</td></tr>
+					      <tr><td style=\"padding: 10px; border-bottom: 1px solid #eee; font-weight: bold;\">Added Time</td><td style=\"padding: 10px; border-bottom: 1px solid #eee;\">%d hour(s)</td></tr>
+					      <tr><td style=\"padding: 10px; border-bottom: 1px solid #eee; font-weight: bold;\">Extension Paid</td><td style=\"padding: 10px; border-bottom: 1px solid #eee; color: #16a34a; font-weight: bold;\">₹%.2f</td></tr>
+					      <tr><td style=\"padding: 10px; border-bottom: 1px solid #eee; font-weight: bold;\">New End Time</td><td style=\"padding: 10px; border-bottom: 1px solid #eee;\">%s</td></tr>
+					    </table>
+					    <p style=\"font-size: 12px; color: #666;\">Use the same QR ticket in the app for entry/exit scans.</p>
+					  </div>
+					</div>
+					</body>
+					</html>
+					"""
+					.formatted(
+							user.getFullName(),
+							booking.getTicketNumber(),
+							spot.getSpotLabel(),
+							spot.getZone(),
+							extensionHours == null ? 0 : extensionHours,
+							extensionAmount == null ? 0 : extensionAmount,
+							booking.getEndTime() != null
+									? booking.getEndTime().format(DateTimeFormatter.ofPattern("dd MMM yyyy, hh:mm a"))
+									: "N/A");
+			emailService.sendTicketWithQrCode(user.getEmail(), body, null);
+		} catch (Exception e) {
+			System.err.println("[PaymentService] Extension ticket email failed: " + e.getMessage());
+		}
 	}
 }

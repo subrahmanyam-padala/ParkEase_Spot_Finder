@@ -1,5 +1,6 @@
 package com.parkeasy.ParkEase_backend.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.cors.CorsConfiguration;
@@ -8,33 +9,37 @@ import org.springframework.web.filter.CorsFilter;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Configuration
 public class CorsConfig {
 
-    @Bean
-    public CorsFilter corsFilter() {
+	@Value("${app.cors.allowed-origin-patterns:http://localhost:*,https://localhost:*}")
+	private String allowedOriginPatterns;
 
-        CorsConfiguration config = new CorsConfiguration();
+	@Bean
+	public CorsFilter corsFilter() {
 
-        // Allow React frontend from localhost and LAN IPs (for mobile access)
-        config.setAllowedOriginPatterns(List.of(
-                "http://localhost:*", "https://localhost:*",
-                "http://10.*:*", "https://10.*:*",
-                "http://192.168.*:*", "https://192.168.*:*"));
+		CorsConfiguration config = new CorsConfiguration();
 
-        // Allow HTTP methods
-        config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+		// Allow origins from environment-configurable list
+		config.setAllowedOriginPatterns(Arrays.stream(allowedOriginPatterns.split(","))
+				.map(String::trim)
+				.filter(s -> !s.isEmpty())
+				.collect(Collectors.toList()));
 
-        // Allow headers
-        config.setAllowedHeaders(Arrays.asList("*"));
+		// Allow HTTP/S methods
+		config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
 
-        // Allow credentials (JWT, cookies etc.)
-        config.setAllowCredentials(true);
+		// Allow headers
+		config.setAllowedHeaders(Arrays.asList("*"));
 
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", config);
+		// Allow credentials (JWT, cookies etc.)
+		config.setAllowCredentials(true);
 
-        return new CorsFilter(source);
-    }
+		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+		source.registerCorsConfiguration("/**", config);
+
+		return new CorsFilter(source);
+	}
 }

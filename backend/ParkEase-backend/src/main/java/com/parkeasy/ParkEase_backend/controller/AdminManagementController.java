@@ -80,6 +80,18 @@ public class AdminManagementController {
 		return ResponseEntity.ok(adminManagementService.getReportsSummary());
 	}
 
+	@GetMapping("/refunds")
+	public ResponseEntity<List<Map<String, Object>>> getRefundRequests() {
+		return ResponseEntity.ok(adminManagementService.getRefundRequests());
+	}
+
+	@PutMapping("/refunds/{bookingId}")
+	public ResponseEntity<Map<String, Object>> updateRefundStatus(@PathVariable("bookingId") Long bookingId,
+			@RequestBody Map<String, String> payload) {
+		String status = payload.get("status");
+		return ResponseEntity.ok(adminManagementService.updateRefundStatus(bookingId, status));
+	}
+
 	@GetMapping("/alerts")
 	public ResponseEntity<List<AdminAlert>> getAlerts() {
 		return ResponseEntity.ok(adminManagementService.getActiveAlerts());

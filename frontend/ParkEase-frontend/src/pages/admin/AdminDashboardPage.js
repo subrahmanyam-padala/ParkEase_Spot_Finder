@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import PageWrapper from '../../components/admin/PageWrapper';
 import KpiCard from '../../components/admin/KpiCard';
 import { formatINR } from '../../utils/adminMetrics';
-import { fetchAdminOverview } from '../../utils/adminApi';
+import { dismissAdminAlert, fetchAdminAlerts, fetchAdminOverview } from '../../utils/adminApi';
 import '../admin/AdminDashboardPage.css';
 
 const EMPTY_DATA = {
@@ -21,19 +21,25 @@ const EMPTY_DATA = {
 
 const AdminDashboardPage = () => {
   const [overview, setOverview] = useState(EMPTY_DATA);
+  const [refundAlerts, setRefundAlerts] = useState([]);
 
   useEffect(() => {
     let mounted = true;
 
     const loadOverview = async () => {
       try {
-        const response = await fetchAdminOverview();
+        const [response, alerts] = await Promise.all([fetchAdminOverview(), fetchAdminAlerts()]);
         if (mounted) {
           setOverview(response);
+          const refundOnly = (Array.isArray(alerts) ? alerts : []).filter(
+            (a) => (a?.type || '').toLowerCase() === 'refund'
+          );
+          setRefundAlerts(refundOnly);
         }
       } catch {
         if (mounted) {
           setOverview(EMPTY_DATA);
+          setRefundAlerts([]);
         }
       }
     };
@@ -86,6 +92,15 @@ const AdminDashboardPage = () => {
     month: 'long',
     day: 'numeric',
   });
+
+  const handleDismissRefundAlert = async (alertId) => {
+    try {
+      await dismissAdminAlert(alertId);
+      setRefundAlerts((prev) => prev.filter((a) => a.id !== alertId));
+    } catch {
+      // keep UX non-blocking
+    }
+  };
 
   return (
     <PageWrapper title="Dashboard">
@@ -324,6 +339,50 @@ const AdminDashboardPage = () => {
                 </table>
               </div>
             </div>
+          </div>
+        </section>
+
+        <section className="dashboard-section">
+          <h2>Cancellation Refund Requests</h2>
+          <div className="chart-panel">
+            {refundAlerts.length === 0 ? (
+              <span className="empty-activity">No pending cancellation refund requests</span>
+            ) : (
+              <div className="table-responsive">
+                <table className="table table-hover mb-0">
+                  <thead>
+                    <tr>
+                      <th>Title</th>
+                      <th>Message</th>
+                      <th>Requested At</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {refundAlerts.map((alert) => (
+                      <tr key={alert.id}>
+                        <td className="fw-semibold">{alert.title || 'Refund Request'}</td>
+                        <td>
+                          <div>{alert.message}</div>
+                          {alert.details ? <small className="text-muted" style={{ whiteSpace: 'pre-line' }}>{alert.details}</small> : null}
+                        </td>
+                        <td>
+                          {alert.createdAt ? new Date(alert.createdAt).toLocaleString('en-IN') : 'N/A'}
+                        </td>
+                        <td>
+                          <button
+                            className="btn btn-sm btn-outline-success"
+                            onClick={() => handleDismissRefundAlert(alert.id)}
+                          >
+                            Mark Reviewed
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </section>
       </div>

@@ -63,6 +63,12 @@ public class Booking {
   @Column(name = "updated_at")
   private LocalDateTime updatedAt;
 
+  @Column(name = "cancellation_requested_at")
+  private LocalDateTime cancellationRequestedAt;
+
+  @Column(name = "refund_status", length = 30)
+  private String refundStatus = "NOT_APPLICABLE";
+
   @PrePersist
   protected void onCreate() {
     this.createdAt = LocalDateTime.now();
@@ -211,5 +217,21 @@ public class Booking {
 
   public void setUpdatedAt(LocalDateTime updatedAt) {
     this.updatedAt = updatedAt;
+  }
+
+  public LocalDateTime getCancellationRequestedAt() {
+    return cancellationRequestedAt;
+  }
+
+  public void setCancellationRequestedAt(LocalDateTime cancellationRequestedAt) {
+    this.cancellationRequestedAt = cancellationRequestedAt;
+  }
+
+  public String getRefundStatus() {
+    return refundStatus;
+  }
+
+  public void setRefundStatus(String refundStatus) {
+    this.refundStatus = refundStatus;
   }
 }

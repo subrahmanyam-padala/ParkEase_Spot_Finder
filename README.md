@@ -7,6 +7,15 @@ ParkEase is a full-stack parking management application with:
 - Payment flow integration points
 - Admin analytics and occupancy/pricing endpoints
 
+## Frontend and Backend
+
+Frontend:
+- React SPA for user and admin experiences
+- Uses Axios clients in `src/utils` / `src/services` to call backend APIs
+
+Backend:
+- Spring Boot REST APIs consumed by the frontend
+
 ## Tech Stack
 - Frontend: React 18, React Router, Axios, Bootstrap
 - Backend: Spring Boot 4, Spring Security, JPA/Hibernate

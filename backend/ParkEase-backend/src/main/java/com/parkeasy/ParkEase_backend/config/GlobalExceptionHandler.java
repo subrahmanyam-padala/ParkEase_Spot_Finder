@@ -7,6 +7,7 @@ import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
@@ -43,6 +44,13 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<Map<String, Object>> handleOptimisticLock(ObjectOptimisticLockingFailureException exception) {
 		return buildErrorResponse(HttpStatus.CONFLICT,
 				"This spot was just booked by someone else. Please try a different spot.");
+	}
+
+	@ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+	public ResponseEntity<Map<String, Object>> handleMethodNotSupported(
+			HttpRequestMethodNotSupportedException exception) {
+		return buildErrorResponse(HttpStatus.METHOD_NOT_ALLOWED,
+				"Request method not supported: " + exception.getMethod());
 	}
 
 	@ExceptionHandler(Exception.class)

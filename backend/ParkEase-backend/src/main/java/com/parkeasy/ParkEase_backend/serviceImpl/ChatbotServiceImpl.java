@@ -49,50 +49,58 @@ public class ChatbotServiceImpl implements ChatbotService {
 		Integer userId = requestDTO.getUserId();
 
 		// Greetings
-		if (matchesIntent(message.toLowerCase(), "hello", "hi", "hey", "hii", "helo", "greet", "help", "start", "get started", "menu",
+		if (matchesIntent(message.toLowerCase(), "hello", "hi", "hey", "hii", "helo", "greet", "help", "start",
+				"get started", "menu",
 				"what can you do", "what do you do")) {
 			return handleGreeting();
 		}
 
 		// My bookings / ticket / status
-		if (matchesIntent(message.toLowerCase(), "my booking", "my ticket", "my reservation", "active booking", "current booking",
+		if (matchesIntent(message.toLowerCase(), "my booking", "my ticket", "my reservation", "active booking",
+				"current booking",
 				"show booking", "check booking", "booking status", "view ticket", "my pass", "my parking")) {
 			return handleMyBookings(userId);
 		}
 
 		// QR code / scan / entry / exit
-		if (matchesIntent(message.toLowerCase(), "qr", "scan", "barcode", "entry", "exit", "gate", "enter", "check in", "checkin",
+		if (matchesIntent(message.toLowerCase(), "qr", "scan", "barcode", "entry", "exit", "gate", "enter", "check in",
+				"checkin",
 				"check-in", "check out", "checkout", "check-out", "leave", "going out")) {
 			return handleQrAndGate(userId);
 		}
 
 		// Navigation / directions
-		if (matchesIntent(message.toLowerCase(), "navigate", "direction", "find my car", "where is my", "where is spot", "location",
+		if (matchesIntent(message.toLowerCase(), "navigate", "direction", "find my car", "where is my", "where is spot",
+				"location",
 				"path", "how to reach", "way to", "how do i get", "guide me", "take me", "show me the way",
 				"spot location")) {
 			return handleNavigation(message, userId);
 		}
 
 		// Pricing
-		if (matchesIntent(message.toLowerCase(), "price", "cost", "fee", "charge", "rate", "how much", "pricing", "surge", "tariff",
+		if (matchesIntent(message.toLowerCase(), "price", "cost", "fee", "charge", "rate", "how much", "pricing", "surge",
+				"tariff",
 				"amount", "kitna", "charges", "rupee", "inr", "₹")) {
 			return handlePricing();
 		}
 
 		// EV / electric spots
-		if (matchesIntent(message.toLowerCase(), "ev", "electric", "charging", "charge my car", "ev spot", "electric vehicle",
+		if (matchesIntent(message.toLowerCase(), "ev", "electric", "charging", "charge my car", "ev spot",
+				"electric vehicle",
 				"ev parking", "ev charge")) {
 			return handleEvSpots();
 		}
 
 		// Available spots
-		if (matchesIntent(message.toLowerCase(), "available", "free spot", "empty", "vacant", "open spot", "any spot", "show spots",
+		if (matchesIntent(message.toLowerCase(), "available", "free spot", "empty", "vacant", "open spot", "any spot",
+				"show spots",
 				"list spots", "find spot", "find parking", "spot available", "is there", "parking available")) {
 			return handleAvailableSpots(message);
 		}
 
 		// Book / reserve
-		if (matchesIntent(message.toLowerCase(), "book", "reserve", "want to park", "need parking", "get a spot", "new booking",
+		if (matchesIntent(message.toLowerCase(), "book", "reserve", "want to park", "need parking", "get a spot",
+				"new booking",
 				"make a booking", "create booking")) {
 			return handleBookingHelp();
 		}
@@ -104,7 +112,8 @@ public class ChatbotServiceImpl implements ChatbotService {
 		}
 
 		// Zone / floor info
-		if (matchesIntent(message.toLowerCase(), "zone", "floor", "level", "section", "area", "ground floor", "rooftop", "premium",
+		if (matchesIntent(message.toLowerCase(), "zone", "floor", "level", "section", "area", "ground floor", "rooftop",
+				"premium",
 				"which zone")) {
 			return handleZoneInfo(message);
 		}
@@ -116,13 +125,15 @@ public class ChatbotServiceImpl implements ChatbotService {
 		}
 
 		// Extend time
-		if (matchesIntent(message.toLowerCase(), "extend", "more time", "extra hour", "add time", "increase time", "stay longer",
+		if (matchesIntent(message.toLowerCase(), "extend", "more time", "extra hour", "add time", "increase time",
+				"stay longer",
 				"extend my", "extend parking")) {
 			return handleExtendTime(userId);
 		}
 
 		// Time remaining / duration
-		if (matchesIntent(message.toLowerCase(), "time left", "time remaining", "how long", "how much time", "when does", "when will",
+		if (matchesIntent(message.toLowerCase(), "time left", "time remaining", "how long", "how much time", "when does",
+				"when will",
 				"expiry", "expire", "validity", "valid until", "end time", "parking end", "ticket valid")) {
 			return handleTimeRemaining(userId);
 		}
@@ -134,26 +145,30 @@ public class ChatbotServiceImpl implements ChatbotService {
 		}
 
 		// Payment
-		if (matchesIntent(message.toLowerCase(), "payment", "pay", "razorpay", "upi", "gpay", "google pay", "phonepe", "paytm",
+		if (matchesIntent(message.toLowerCase(), "payment", "pay", "razorpay", "upi", "gpay", "google pay", "phonepe",
+				"paytm",
 				"net banking", "debit card", "credit card", "wallet", "how to pay", "payment method", "pay online")) {
 			return handlePaymentHelp();
 		}
 
 		// Opening hours / contact / support
-		if (matchesIntent(message.toLowerCase(), "open", "close", "timing", "hours", "schedule", "when open", "working hours",
+		if (matchesIntent(message.toLowerCase(), "open", "close", "timing", "hours", "schedule", "when open",
+				"working hours",
 				"support", "contact", "help desk", "customer care", "phone number", "email support")) {
 			return handleSupportInfo();
 		}
 
 		// Vehicle / number plate
-		if (matchesIntent(message.toLowerCase(), "vehicle", "car number", "number plate", "registration", "my car", "my vehicle",
+		if (matchesIntent(message.toLowerCase(), "vehicle", "car number", "number plate", "registration", "my car",
+				"my vehicle",
 				"change vehicle", "wrong vehicle")) {
 			return handleVehicleHelp();
 		}
 
 		// Farewell / thanks ("exit" intentionally omitted — caught by QR gate block
 		// above)
-		if (matchesIntent(message.toLowerCase(), "bye", "goodbye", "see you", "thanks", "thank you", "thank", "thx", "ok thanks",
+		if (matchesIntent(message.toLowerCase(), "bye", "goodbye", "see you", "thanks", "thank you", "thank", "thx",
+				"ok thanks",
 				"done", "quit", "that's all", "no thanks", "no need", "okay", "great", "awesome", "perfect")) {
 			return new ChatbotResponseDTO("You're welcome! 😊 Have a safe drive and a great day at ParkEase! 🅿️",
 					"FAREWELL", buildSuggestions("Find a spot", "find_spot", "View pricing", "pricing", "My tickets",
@@ -163,9 +178,9 @@ public class ChatbotServiceImpl implements ChatbotService {
 		return handleUnknown();
 	}
 
-	// 
+	//
 	// Intent handlers
-	// 
+	//
 
 	private ChatbotResponseDTO handleGreeting() {
 		long available = parkingSpotRepository.countTotalSpots() - parkingSpotRepository.countOccupiedSpots();
@@ -423,7 +438,7 @@ public class ChatbotServiceImpl implements ChatbotService {
 					buildSuggestions("Find a spot", "find_spot", "Main menu", "menu"));
 		}
 
-		StringBuilder reply = new StringBuilder("🏢 **Parking Zones at ABC City Mall:**\n\n");
+		StringBuilder reply = new StringBuilder("🏢 **Parking Zones at City Mall:**\n\n");
 		for (String zone : zones) {
 			long total = parkingSpotRepository.countTotalSpotsByZone(zone);
 			long occupied = parkingSpotRepository.countOccupiedSpotsByZone(zone);
@@ -513,6 +528,8 @@ public class ChatbotServiceImpl implements ChatbotService {
 								+ "**To extend your parking:**\n" + "1. Go to **My Tickets** in the app\n"
 								+ "2. Tap your active ticket\n" + "3. Tap **Extend Time** and choose additional hours\n"
 								+ "4. Pay the extra fee — your ticket is updated instantly\n\n"
+								+ "⚠️ Extension is allowed only **before expiry**."
+								+ " If ticket is in **OVERSTAY**, extension is blocked and overstay payment is required first.\n\n"
 								+ "💡 Extend before your time runs out to avoid overstay fees!",
 						"EXTEND_TIME", buildSuggestions("My tickets", "my_bookings", "Time remaining", "time_left",
 								"Overstay info", "overstay", "Main menu", "menu"));
@@ -521,17 +538,19 @@ public class ChatbotServiceImpl implements ChatbotService {
 		return new ChatbotResponseDTO("⏱️ **Extending Parking Time:**\n\n"
 				+ "You can extend an active parking session directly from the app:\n\n" + "1. Go to **My Tickets**\n"
 				+ "2. Tap your active ticket\n" + "3. Tap **Extend Time** and choose extra hours\n"
-				+ "4. Complete payment — your end time updates immediately\n\n"
+				+ "4. Complete payment — your end time updates immediately on the same ticket\n\n"
+				+ "⚠️ Extension works only before expiry. Overstay tickets must clear overstay payment first.\n\n"
 				+ "💡 Always extend before your session expires to avoid overstay charges!", "EXTEND_TIME",
 				buildSuggestions("My tickets", "my_bookings", "Overstay info", "overstay", "Main menu", "menu"));
 	}
 
 	private ChatbotResponseDTO handleCancellation() {
 		return new ChatbotResponseDTO(
-				"❌ **How to Cancel a Booking:\n\n" + "1. Tap **Bookings** in the app\n"
+				"❌ How to Cancel a Booking:\n\n" + "1. Tap **Bookings** in the app\n"
 						+ "2. Select the booking you want to cancel\n"
 						+ "3. Tap **Cancel Booking** — your spot is freed immediately\n\n"
-						+ "⚠️ **Note:** Cancellations are only possible before you check in.\n"
+						+ "⚠️ **Note:** Cancellation is allowed only before entry (ACTIVE or PAID status).\n"
+						+ "After check-in/start of parking (CHECKED_IN to EXIT), cancellation is not allowed.\n"
 						+ "Refunds are processed within 5–7 business days to your original payment method.",
 				"CANCELLATION",
 				buildSuggestions("My tickets", "my_bookings", "Payment help", "payment", "Main menu", "menu"));
@@ -551,7 +570,7 @@ public class ChatbotServiceImpl implements ChatbotService {
 	}
 
 	private ChatbotResponseDTO handleSupportInfo() {
-		return new ChatbotResponseDTO("🏢 **ParkEase — ABC City Mall Parking**\n\n"
+		return new ChatbotResponseDTO("🏢 **ParkEase — City Mall Parking**\n\n"
 				+ "🕐 **Operating Hours:** 6:00 AM – 11:00 PM (all days)\n\n"
 				+ "📞 **Support Helpline:** +91-1800-PARKEASE (toll-free)\n" + "📧 **Email:** support@parkease.in\n"
 				+ "🌐 **In-app support:** Tap **Profile → Help & Support**\n\n"
@@ -582,9 +601,9 @@ public class ChatbotServiceImpl implements ChatbotService {
 						"How to park?", "help"));
 	}
 
-	// 
+	//
 	// Utility helpers
-	// 
+	//
 
 	/** Returns all bookings for a user with an active/in-progress status. */
 	private List<Booking> getActiveBookingsForUser(Integer userId) {
@@ -621,18 +640,18 @@ public class ChatbotServiceImpl implements ChatbotService {
 		if (status == null)
 			return "Unknown";
 		switch (status.toUpperCase()) {
-		case "PAID":
-			return "Ready to Enter";
-		case "CHECKED_IN":
-			return "Parked / Checked In";
-		case "ACTIVE":
-			return "Active";
-		case "COMPLETED":
-			return "Completed";
-		case "CANCELLED":
-			return "Cancelled";
-		default:
-			return status;
+			case "PAID":
+				return "Ready to Enter";
+			case "CHECKED_IN":
+				return "Parked / Checked In";
+			case "ACTIVE":
+				return "Active";
+			case "COMPLETED":
+				return "Completed";
+			case "CANCELLED":
+				return "Cancelled";
+			default:
+				return status;
 		}
 	}
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
-import { getMyBookings, getMyActiveBookings, payOverstayByUser } from '../utils/api';
+import { getMyBookings, getMyActiveBookings } from '../utils/api';
 import { Navbar, LoadingSpinner } from '../components';
 import BottomNav from '../components/BottomNav';
 
@@ -15,10 +15,10 @@ const statusColor = (status) => {
 
 const shouldShowQr = (status) => {
   const normalized = (status || '').toUpperCase();
-  return ['ACTIVE', 'PAID', 'CHECKED_IN', 'OVERSTAY'].includes(normalized);
+  return ['ACTIVE', 'PAID', 'CHECKED_IN', 'OVERSTAY_PAID'].includes(normalized);
 };
 
-const DASHBOARD_VISIBLE_STATUSES = ['ACTIVE', 'PAID', 'CHECKED_IN', 'OVERSTAY'];
+const DASHBOARD_VISIBLE_STATUSES = ['ACTIVE', 'PAID', 'CHECKED_IN', 'OVERSTAY', 'OVERSTAY_PAID'];
 
 const isDashboardVisibleStatus = (status) => {
   const normalized = (status || '').toUpperCase();
@@ -31,7 +31,6 @@ const DashboardPage = () => {
   const [bookings, setBookings] = useState([]);
   const [activeBookings, setActiveBookings] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [payingOverstay, setPayingOverstay] = useState(false);
 
   useEffect(() => { loadData(); }, []);
 
@@ -48,16 +47,9 @@ const DashboardPage = () => {
     } finally { setLoading(false); }
   };
 
-  const handlePayOverstay = async (booking) => {
-    if (!booking?.ticketNumber) return;
-    if (!window.confirm(`Pay overstay fee of ₹${booking.overstayFee || 0}?`)) return;
-    setPayingOverstay(true);
-    try {
-      await payOverstayByUser(booking.ticketNumber);
-      alert('Overstay fee paid! A new ticket has been sent to your email.');
-      loadData();
-    } catch { alert('Failed to pay overstay fee'); }
-    finally { setPayingOverstay(false); }
+  const handlePayOverstay = (booking) => {
+    if (!booking?.bookingId) return;
+    navigate(`/ticket/${booking.bookingId}`);
   };
 
   if (loading) return <LoadingSpinner message="Loading dashboard..." />;
@@ -123,9 +115,8 @@ const DashboardPage = () => {
                     <i className="bi bi-exclamation-triangle-fill me-2"></i>
                     <strong>Overstay detected!</strong> Fee: ₹{activeBooking.overstayFee || 0}
                     <button className="btn btn-danger btn-sm d-block mt-2 w-100"
-                      onClick={() => handlePayOverstay(activeBooking)} disabled={payingOverstay}>
-                      {payingOverstay ? <><span className="spinner-border spinner-border-sm me-1"></span>Processing...</>
-                        : <><i className="bi bi-credit-card me-1"></i>Pay Overstay Fee</>}
+                      onClick={() => handlePayOverstay(activeBooking)}>
+                      <><i className="bi bi-credit-card me-1"></i>Pay Overstay Fee</>
                     </button>
                   </div>
                 )}

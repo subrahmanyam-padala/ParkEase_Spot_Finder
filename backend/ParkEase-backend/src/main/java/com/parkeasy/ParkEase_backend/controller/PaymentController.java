@@ -41,6 +41,60 @@ public class PaymentController {
     }
   }
 
+  @PostMapping("/create-overstay-order")
+  public ResponseEntity<?> createOverstayPaymentOrder(Authentication authentication,
+      @Valid @RequestBody PaymentRequestDTO requestDTO) {
+    try {
+      Integer userId = getUserIdFromAuth(authentication);
+      PaymentResponseDTO response = paymentService.createOverstayPaymentOrder(userId, requestDTO);
+      return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    } catch (RuntimeException e) {
+      return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+          .body(Map.of("error", e.getMessage()));
+    }
+  }
+
+  @PostMapping("/create-extension-order")
+  public ResponseEntity<?> createExtensionPaymentOrder(Authentication authentication,
+      @Valid @RequestBody PaymentRequestDTO requestDTO) {
+    try {
+      Integer userId = getUserIdFromAuth(authentication);
+      PaymentResponseDTO response = paymentService.createExtensionPaymentOrder(userId, requestDTO);
+      return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    } catch (RuntimeException e) {
+      return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+          .body(Map.of("error", e.getMessage()));
+    }
+  }
+
+  // Fallback route so action-like POST paths are never mistaken for /{paymentId}
+  // lookups.
+  @PostMapping("/{action}")
+  public ResponseEntity<?> createPaymentAction(Authentication authentication,
+      @PathVariable("action") String action,
+      @Valid @RequestBody PaymentRequestDTO requestDTO) {
+    try {
+      Integer userId = getUserIdFromAuth(authentication);
+      String normalized = action == null ? "" : action.trim().toLowerCase();
+      if ("create-order".equals(normalized)) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(paymentService.createPaymentOrder(userId, requestDTO));
+      }
+      if ("create-overstay-order".equals(normalized)) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .body(paymentService.createOverstayPaymentOrder(userId, requestDTO));
+      }
+      if ("create-extension-order".equals(normalized)) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .body(paymentService.createExtensionPaymentOrder(userId, requestDTO));
+      }
+      return ResponseEntity.status(HttpStatus.NOT_FOUND)
+          .body(Map.of("error", "Unknown payment action: " + action));
+    } catch (RuntimeException e) {
+      return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+          .body(Map.of("error", e.getMessage()));
+    }
+  }
+
   @PostMapping("/verify")
   public ResponseEntity<?> verifyPayment(@Valid @RequestBody PaymentVerifyDTO verifyDTO) {
     try {

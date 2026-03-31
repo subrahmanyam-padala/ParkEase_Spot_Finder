@@ -9,6 +9,8 @@ public class PaymentRequestDTO {
 
   private String paymentMethod;
 
+  private Integer extensionHours;
+
   public PaymentRequestDTO() {
   }
 
@@ -26,5 +28,13 @@ public class PaymentRequestDTO {
 
   public void setPaymentMethod(String paymentMethod) {
     this.paymentMethod = paymentMethod;
+  }
+
+  public Integer getExtensionHours() {
+    return extensionHours;
+  }
+
+  public void setExtensionHours(Integer extensionHours) {
+    this.extensionHours = extensionHours;
   }
 }

@@ -2,13 +2,17 @@ package com.parkeasy.ParkEase_backend.serviceImpl;
 
 import com.parkeasy.ParkEase_backend.dto.BookingRequestDTO;
 import com.parkeasy.ParkEase_backend.dto.BookingResponseDTO;
+import com.parkeasy.ParkEase_backend.entity.AdminAlert;
 import com.parkeasy.ParkEase_backend.entity.Booking;
 import com.parkeasy.ParkEase_backend.entity.ParkingSpot;
 import com.parkeasy.ParkEase_backend.entity.ParkingSlot;
+import com.parkeasy.ParkEase_backend.entity.Payment;
 import com.parkeasy.ParkEase_backend.entity.Users;
+import com.parkeasy.ParkEase_backend.repository.AdminAlertRepository;
 import com.parkeasy.ParkEase_backend.repository.BookingRepository;
 import com.parkeasy.ParkEase_backend.repository.ParkingSpotRepository;
 import com.parkeasy.ParkEase_backend.repository.ParkingSlotRepository;
+import com.parkeasy.ParkEase_backend.repository.PaymentRepository;
 import com.parkeasy.ParkEase_backend.repository.UsersRepository;
 import com.parkeasy.ParkEase_backend.service.BookingService;
 import com.parkeasy.ParkEase_backend.service.EmailService;
@@ -32,6 +36,8 @@ public class BookingServiceImpl implements BookingService {
   private final BookingRepository bookingRepository;
   private final ParkingSpotRepository parkingSpotRepository;
   private final ParkingSlotRepository parkingSlotRepository;
+  private final PaymentRepository paymentRepository;
+  private final AdminAlertRepository adminAlertRepository;
   private final UsersRepository usersRepository;
   private final PricingService pricingService;
   private final QrCodeService qrCodeService;
@@ -40,6 +46,8 @@ public class BookingServiceImpl implements BookingService {
   public BookingServiceImpl(BookingRepository bookingRepository,
       ParkingSpotRepository parkingSpotRepository,
       ParkingSlotRepository parkingSlotRepository,
+      PaymentRepository paymentRepository,
+      AdminAlertRepository adminAlertRepository,
       UsersRepository usersRepository,
       PricingService pricingService,
       QrCodeService qrCodeService,
@@ -47,6 +55,8 @@ public class BookingServiceImpl implements BookingService {
     this.bookingRepository = bookingRepository;
     this.parkingSpotRepository = parkingSpotRepository;
     this.parkingSlotRepository = parkingSlotRepository;
+    this.paymentRepository = paymentRepository;
+    this.adminAlertRepository = adminAlertRepository;
     this.usersRepository = usersRepository;
     this.pricingService = pricingService;
     this.qrCodeService = qrCodeService;
@@ -212,17 +222,44 @@ public class BookingServiceImpl implements BookingService {
     Booking booking = bookingRepository.findById(bookingId)
         .orElseThrow(() -> new RuntimeException("Booking not found with ID: " + bookingId));
 
-    if (!"ACTIVE".equals(booking.getStatus())) {
-      throw new RuntimeException("Booking is not active. Current status: " + booking.getStatus());
+    String status = booking.getStatus() == null ? "" : booking.getStatus().toUpperCase();
+    if (!"ACTIVE".equals(status) && !"PAID".equals(status)) {
+      throw new RuntimeException("Cancellation allowed only before entry (ACTIVE or PAID). Current status: "
+          + booking.getStatus());
     }
 
+    List<Payment> successfulPayments = paymentRepository.findByBookingBookingIdAndStatus(bookingId, "SUCCESS");
+    boolean refundRequired = !successfulPayments.isEmpty();
+
     booking.setStatus("CANCELLED");
+    booking.setCancellationRequestedAt(LocalDateTime.now());
+    booking.setRefundStatus(refundRequired ? "REQUESTED" : "NOT_APPLICABLE");
 
     // Free up the parking spot
     ParkingSpot spot = booking.getParkingSpot();
     spot.setIsOccupied(false);
     parkingSpotRepository.save(spot);
     syncLegacySlotStatus(spot.getSpotLabel(), false);
+
+    if (refundRequired) {
+      LocalDateTime now = LocalDateTime.now();
+      for (Payment payment : successfulPayments) {
+        payment.setRefundStatus("REQUESTED");
+        payment.setRefundRequestedAt(now);
+        paymentRepository.save(payment);
+      }
+
+      AdminAlert alert = new AdminAlert();
+      alert.setType("Refund");
+      alert.setTitle("Refund Request: Booking Cancelled");
+      alert.setMessage("Ticket " + booking.getTicketNumber() + " cancelled by user. Refund required.");
+      alert.setDetails("User: " + booking.getUser().getFullName() + " (" + booking.getUser().getEmail() + ")"
+          + "\nTicket: " + booking.getTicketNumber()
+          + "\nSpot: " + booking.getParkingSpot().getSpotLabel()
+          + "\nAmount to refund: \u20b9" + booking.getTotalAmount()
+          + "\nRequested at: " + now);
+      adminAlertRepository.save(alert);
+    }
 
     Booking saved = bookingRepository.save(booking);
     return toResponseDTO(saved);
@@ -244,6 +281,9 @@ public class BookingServiceImpl implements BookingService {
   }
 
   private BookingResponseDTO toResponseDTO(Booking booking) {
+    final double defaultSpotPricePerHour = 75.0;
+    final double overstayMultiplier = 1.5;
+
     BookingResponseDTO dto = new BookingResponseDTO();
     dto.setBookingId(booking.getBookingId());
     dto.setTicketNumber(booking.getTicketNumber());
@@ -262,6 +302,13 @@ public class BookingServiceImpl implements BookingService {
     dto.setNavigationPath(booking.getParkingSpot().getNavigationPath());
     dto.setUserName(booking.getUser().getFullName());
     dto.setUserEmail(booking.getUser().getEmail());
+    dto.setCancellationRequestedAt(booking.getCancellationRequestedAt());
+    dto.setRefundStatus(booking.getRefundStatus());
+    dto.setSpotPricePerHour(
+        booking.getParkingSpot().getPricePerHour() != null && booking.getParkingSpot().getPricePerHour() > 0
+            ? booking.getParkingSpot().getPricePerHour()
+            : defaultSpotPricePerHour);
+    dto.setOverstayMultiplier(overstayMultiplier);
 
     // Calculate durationHours from start/end times
     if (booking.getStartTime() != null && booking.getEndTime() != null) {

@@ -30,8 +30,7 @@ public class AdminDataInitializer {
 
 	@Bean
 	CommandLineRunner seedAdminData(ParkingSlotRepository parkingSlotRepository,
-			ParkingSpotRepository parkingSpotRepository,
-			BookingRepository bookingRepository,
+			ParkingSpotRepository parkingSpotRepository, BookingRepository bookingRepository,
 			ParkingBookingRepository parkingBookingRepository, AdminAlertRepository adminAlertRepository,
 			AdminUserRepository adminUserRepository, PasswordEncoder passwordEncoder) {
 		return args -> {
@@ -86,16 +85,12 @@ public class AdminDataInitializer {
 	}
 
 	private void reconcileOccupancyFromBookings(BookingRepository bookingRepository,
-			ParkingSlotRepository parkingSlotRepository,
-			ParkingSpotRepository parkingSpotRepository) {
+			ParkingSlotRepository parkingSlotRepository, ParkingSpotRepository parkingSpotRepository) {
 		List<String> occupiedStatuses = Arrays.asList("ACTIVE", "PAID", "CHECKED_IN", "OVERSTAY", "OVERSTAY_PAID");
 		List<Booking> activeBookings = bookingRepository.findByStatusIn(occupiedStatuses);
-		Set<String> activeSpotLabels = activeBookings.stream()
-				.map(Booking::getParkingSpot)
-				.filter(java.util.Objects::nonNull)
-				.map(ParkingSpot::getSpotLabel)
-				.filter(label -> label != null && !label.isBlank())
-				.map(label -> label.trim().toUpperCase())
+		Set<String> activeSpotLabels = activeBookings.stream().map(Booking::getParkingSpot)
+				.filter(java.util.Objects::nonNull).map(ParkingSpot::getSpotLabel)
+				.filter(label -> label != null && !label.isBlank()).map(label -> label.trim().toUpperCase())
 				.collect(Collectors.toSet());
 
 		for (String rawSpotLabel : activeSpotLabels) {
@@ -115,8 +110,8 @@ public class AdminDataInitializer {
 			});
 		}
 		if (!activeSpotLabels.isEmpty()) {
-			System.out.println(
-					"[AdminDataInitializer] Reconciled occupancy for " + activeSpotLabels.size() + " active spot labels");
+			System.out.println("[AdminDataInitializer] Reconciled occupancy for " + activeSpotLabels.size()
+					+ " active spot labels");
 		}
 	}
 
@@ -138,8 +133,7 @@ public class AdminDataInitializer {
 	}
 
 	private ParkingBooking buildBooking(String userName, String email, String slot, int duration, int amount,
-			boolean paid,
-			String paymentMethod, int daysAgo) {
+			boolean paid, String paymentMethod, int daysAgo) {
 		ParkingBooking booking = new ParkingBooking();
 		booking.setUserName(userName);
 		booking.setUserEmail(email);
