@@ -34,18 +34,19 @@ public class AdminDataInitializer {
 			ParkingBookingRepository parkingBookingRepository, AdminAlertRepository adminAlertRepository,
 			AdminUserRepository adminUserRepository, PasswordEncoder passwordEncoder) {
 		return args -> {
-			// Seed default admin user if not exists
-			if (!adminUserRepository.existsByAdminId("ANI")) {
-				AdminUser admin = new AdminUser();
-				admin.setName("Ani Admin");
-				admin.setEmail("ani@parkease.com");
-				admin.setMobile("9999999999");
-				admin.setAdminId("ANI");
-				admin.setPassword(passwordEncoder.encode("ani123456"));
-				admin.setStatus("Active");
-				adminUserRepository.save(admin);
-				System.out.println("[AdminDataInitializer] Default admin user created: ANI");
-			}
+			// Ensure default admin user is present with requested credentials.
+			AdminUser admin = adminUserRepository.findByAdminId("ANI").orElseGet(AdminUser::new);
+			boolean isNewAdmin = admin.getId() == null;
+			admin.setName("ani");
+			admin.setEmail("subrahmanyam@gmail.com");
+			admin.setMobile("9999999999");
+			admin.setAdminId("ANI");
+			admin.setPassword(passwordEncoder.encode("ani123456"));
+			admin.setStatus("Active");
+			adminUserRepository.save(admin);
+			System.out.println(isNewAdmin
+					? "[AdminDataInitializer] Default admin user created: ANI"
+					: "[AdminDataInitializer] Default admin user synced: ANI");
 			if (parkingSlotRepository.count() == 0) {
 				List<ParkingSlot> slots = new ArrayList<>();
 				for (int i = 1; i <= 12; i++) {

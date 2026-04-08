@@ -6,6 +6,7 @@ import { isAdminLoggedIn } from '../utils/adminAuth';
 
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
   const { user, loading } = useApp();
+  const token = localStorage.getItem('parkease_token');
 
   // ---------- ADMIN ROUTE GUARD ----------
   if (requireAdmin) {
@@ -27,7 +28,7 @@ const ProtectedRoute = ({ children, requireAdmin = false }) => {
     return <LoadingSpinner message="Checking authentication..." />;
   }
 
-  if (!user) {
+  if (!user || !token) {
     return <Navigate to="/login" replace />;
   }
 

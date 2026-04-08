@@ -20,11 +20,11 @@ API.interceptors.request.use((config) => {
   return config;
 });
 
-// On 401 redirect to login
+// On auth failure redirect to login
 API.interceptors.response.use(
   (res) => res,
   (err) => {
-    if (err.response?.status === 401) {
+    if (err.response?.status === 401 || err.response?.status === 403) {
       localStorage.removeItem('parkease_token');
       localStorage.removeItem('parkease_user');
       if (window.location.pathname !== '/login' && window.location.pathname !== '/') {

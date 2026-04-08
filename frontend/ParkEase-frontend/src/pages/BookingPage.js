@@ -67,7 +67,15 @@ const BookingPage = () => {
       const booking = res.data;
       navigate(`/payment/${booking.bookingId}`, { state: booking });
     } catch (err) {
-      setError(err.response?.data?.error || 'Unable to create booking. Please try again.');
+      if (err.response?.status === 401 || err.response?.status === 403) {
+        setError('Session expired. Please login again and retry booking.');
+      } else {
+        setError(
+          err.response?.data?.error ||
+          err.response?.data?.message ||
+          'Unable to create booking. Please try again.'
+        );
+      }
     } finally {
       setSubmitting(false);
     }
