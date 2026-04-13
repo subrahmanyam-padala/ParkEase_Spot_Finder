@@ -4,6 +4,7 @@ import axios from "axios";
 import { useApp } from "../context/AppContext";
 import carImage from "../images/image2.avif";
 import "./LoginPage.css"; // reuse same CSS
+import { BASE_URL } from "../config";
 
 function RegistrationPage() {
   const navigate = useNavigate();
@@ -41,7 +42,7 @@ function RegistrationPage() {
       setLoading(true);
 
       const response = await axios.post(
-        `http://${window.location.hostname}:8080/api/auth/send-otp`,
+        `${BASE_URL}/api/auth/send-otp`,
         { email: formData.email }
       );
 
@@ -75,7 +76,7 @@ function RegistrationPage() {
       setLoading(true);
 
       const response = await axios.post(
-        `http://${window.location.hostname}:8080/api/auth/register`,
+        `${BASE_URL}/api/auth/register`,
         formData
       );
 

@@ -1,14 +1,8 @@
 import axios from 'axios';
-
-const API_HOST = window.location.hostname;
-const API_BASE =
-  process.env.REACT_APP_API_BASE_URL
-  || (process.env.NODE_ENV === 'production'
-    ? `https://${API_HOST}/api`
-    : `http://${API_HOST}:8080/api`);
+import { API_BASE_URL } from '../config';
 
 const API = axios.create({
-  baseURL: API_BASE,
+  baseURL: API_BASE_URL,
 });
 
 // Attach JWT token to every request
@@ -115,4 +109,5 @@ export const markParkingBookingPaid = async (bookingId, paymentMethod) => {
 };
 
 export default API;
+
 

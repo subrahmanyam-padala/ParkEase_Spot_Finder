@@ -1,6 +1,7 @@
 import axios from 'axios';
+import { BASE_URL } from '../config';
 
-const API_BASE_URL = `http://${window.location.hostname}:8080`;
+const API_BASE_URL = BASE_URL;
 const ADMIN_SESSION_KEY = 'parkease_admin_session';
 
 const adminClient = axios.create({
@@ -126,4 +127,6 @@ export const respondAdminComplaint = async (id, payload) => {
 };
 
 export default adminClient;
+
+
 

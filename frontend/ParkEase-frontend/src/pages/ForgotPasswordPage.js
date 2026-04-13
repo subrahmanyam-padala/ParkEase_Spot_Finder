@@ -2,6 +2,7 @@
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import parkingBg from "../images/image3.jpg";
+import { BASE_URL } from "../config";
 
 function ForgotPasswordPage() {
   const navigate = useNavigate();
@@ -43,7 +44,7 @@ function ForgotPasswordPage() {
     try {
       setLoading(true);
       const response = await axios.post(
-        `http://${window.location.hostname}:8080/api/auth/send-otp`,
+        `${BASE_URL}/api/auth/send-otp`,
         { email: formData.email }
       );
 
@@ -83,8 +84,8 @@ function ForgotPasswordPage() {
       setLoading(true);
 
       const endpoint = accountType === "admin"
-        ? `http://${window.location.hostname}:8080/api/admin/auth/reset-password`
-        : `http://${window.location.hostname}:8080/api/auth/reset-password`;
+        ? `${BASE_URL}/api/admin/auth/reset-password`
+        : `${BASE_URL}/api/auth/reset-password`;
 
       const payload = accountType === "admin"
         ? {

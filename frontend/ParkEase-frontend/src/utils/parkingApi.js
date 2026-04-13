@@ -1,9 +1,8 @@
 import axios from 'axios';
-
-const API_HOST = window.location.hostname;
+import { BASE_URL } from '../config';
 
 const parkingClient = axios.create({
-  baseURL: `http://${API_HOST}:8080`,
+  baseURL: BASE_URL,
 });
 
 export const fetchParkingSlots = async () => {
